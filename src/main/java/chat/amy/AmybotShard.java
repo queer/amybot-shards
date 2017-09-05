@@ -12,11 +12,13 @@ import okhttp3.OkHttpClient;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreV2;
+import org.apache.curator.framework.recipes.locks.Lease;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.LoginException;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -42,6 +44,9 @@ public final class AmybotShard {
     private JDA jda;
     @Getter
     private CuratorFramework framework;
+    @Getter
+    private InterProcessSemaphoreV2 semaphore;
+    private Lease lease;
     
     private AmybotShard() {
         getLogger().info("Starting up new amybot shard...");
@@ -61,7 +66,14 @@ public final class AmybotShard {
             getLogger().info("Setting up ZooKeeper...");
             framework = CuratorFrameworkFactory.newClient("127.0.0.1:2181", new ExponentialBackoffRetry(1000, 3));
             // TODO: Grab lease count somehow :C
-            final InterProcessSemaphoreV2 semaphore = new InterProcessSemaphoreV2(framework, SHARD_ID_SEMAPHORE, 2);
+            semaphore = new InterProcessSemaphoreV2(framework, SHARD_ID_SEMAPHORE, 2);
+            try {
+                lease = semaphore.acquire();
+                getLogger().info("Got lease!");
+                getLogger().info("Lease data: '" + Arrays.toString(lease.getData()) + "'.");
+            } catch(final Exception e) {
+                e.printStackTrace();
+            }
         }
     }
     
