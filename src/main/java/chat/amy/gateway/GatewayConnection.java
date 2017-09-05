@@ -62,7 +62,7 @@ public class GatewayConnection {
         messagePoller.startAsync();
         socketState.set(State.CONNECTING);
         shard.getLogger().info("Connecting to the gateway...");
-        websocket = shard.getClient().newWebSocket(new Request.Builder().url("ws://localhost:8080").build(), new GatewayWebsocketListener(shard, this));
+        websocket = shard.getClient().newWebSocket(new Request.Builder().url("ws://gateway:8080").build(), new GatewayWebsocketListener(shard, this));
     }
     
     public void reconnect(final int code, final String reason) {
