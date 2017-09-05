@@ -82,6 +82,7 @@ public final class AmybotShard {
     
     void startBot(final int shardId, final int shardCount) {
         try {
+            // TODO: Ratelimit this. Need to come up with a distributed ratelimiter. ZK/Consul impl.?
             jda = new JDABuilder(AccountType.BOT)
                     .useSharding(shardId, shardCount)
                     .setToken(System.getenv("BOT_TOKEN"))
