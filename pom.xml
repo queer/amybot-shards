@@ -17,29 +17,22 @@
     </repositories>
 
     <dependencies>
-        <!-- Sharding and other distributed state -->
-        <dependency>
-            <groupId>org.apache.curator</groupId>
-            <artifactId>curator-recipes</artifactId>
-            <version>4.0.0</version>
-        </dependency>
-
         <!-- Discord API -->
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
-            <version>3.3.0_260</version>
+            <version>3.3.0_261</version>
         </dependency>
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
-            <version>3.3.0_260</version>
+            <version>3.3.0_261</version>
             <classifier>sources</classifier>
         </dependency>
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
-            <version>3.3.0_260</version>
+            <version>3.3.0_261</version>
             <classifier>javadoc</classifier>
         </dependency>
 
