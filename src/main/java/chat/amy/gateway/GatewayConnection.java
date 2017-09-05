@@ -59,14 +59,15 @@ public class GatewayConnection {
     }
     
     public void connect() {
-        messagePoller.startAsync();
+        if(!messagePoller.isRunning()) {
+            messagePoller.startAsync();
+        }
         socketState.set(State.CONNECTING);
         shard.getLogger().info("Connecting to the gateway...");
         websocket = shard.getClient().newWebSocket(new Request.Builder().url("ws://gateway:8080").build(), new GatewayWebsocketListener(shard, this));
     }
     
     public void reconnect(final int code, final String reason) {
-        messagePoller.stopAsync();
         shard.getLogger().info("Finishing closing connection...");
         websocket.close(code, reason);
         if(!queue.isEmpty()) {
