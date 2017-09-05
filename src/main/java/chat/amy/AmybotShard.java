@@ -7,7 +7,11 @@ import lombok.Getter;
 import net.dv8tion.jda.core.AccountType;
 import net.dv8tion.jda.core.JDA;
 import net.dv8tion.jda.core.JDABuilder;
+import net.dv8tion.jda.core.entities.Game;
+import net.dv8tion.jda.core.events.Event;
+import net.dv8tion.jda.core.events.ReadyEvent;
 import net.dv8tion.jda.core.exceptions.RateLimitedException;
+import net.dv8tion.jda.core.hooks.EventListener;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -81,6 +85,11 @@ public final class AmybotShard {
             jda = new JDABuilder(AccountType.BOT)
                     .useSharding(shardId, shardCount)
                     .setToken(System.getenv("BOT_TOKEN"))
+                    .addEventListener((EventListener) event -> {
+                        if(event instanceof ReadyEvent) {
+                            jda.getPresence().setGame(Game.of(jda.getSelfUser().getName() + " shard " + shardId + " / " + shardCount));
+                        }
+                    })
                     .buildAsync();
         } catch(final LoginException | RateLimitedException e) {
             e.printStackTrace();
