@@ -88,6 +88,7 @@ public final class AmybotShard {
                     .addEventListener((EventListener) event -> {
                         if(event instanceof ReadyEvent) {
                             jda.getPresence().setGame(Game.of(jda.getSelfUser().getName() + " shard " + shardId + " / " + shardCount));
+                            getLogger().info("Logged in as shard " + shardId + " / " + shardCount);
                         }
                     })
                     .buildAsync();
