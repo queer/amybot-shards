@@ -1,22 +1,50 @@
 package chat.amy;
 
+import chat.amy.gateway.GatewayConnection;
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 import lombok.Getter;
 import net.dv8tion.jda.core.AccountType;
 import net.dv8tion.jda.core.JDA;
 import net.dv8tion.jda.core.JDABuilder;
 import net.dv8tion.jda.core.exceptions.RateLimitedException;
+import okhttp3.OkHttpClient;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreV2;
+import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.LoginException;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author amy
  * @since 9/2/17.
  */
+@SuppressWarnings({"unused", "UnnecessarilyQualifiedInnerClassAccess", "WeakerAccess"})
 public final class AmybotShard {
+    public static final String SHARD_ROOT = "/amybot/shard";
+    public static final String SHARD_ID_SEMAPHORE = SHARD_ROOT + "/id";
+    @Getter
+    @SuppressWarnings("TypeMayBeWeakened")
+    private final OkHttpClient client = new OkHttpClient.Builder()
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .build();
+    @Getter
+    private final Logger logger = LoggerFactory.getLogger("amybot-shard");
+    @Getter
+    private final GatewayConnection gatewayConnection = new GatewayConnection(this);
+    @Getter
+    private final EventBus eventBus = new EventBus();
     @Getter
     private JDA jda;
+    @Getter
+    private CuratorFramework framework;
     
     private AmybotShard() {
+        getLogger().info("Starting up new amybot shard...");
     }
     
     public static void main(final String[] args) {
@@ -24,10 +52,20 @@ public final class AmybotShard {
     }
     
     private void start() {
-    
+        gatewayConnection.connect();
     }
     
-    private void startBot(final int shardId, final int shardCount) {
+    @Subscribe
+    public void onReady(final InternalEvent event) {
+        if(event == InternalEvent.READY) {
+            getLogger().info("Setting up ZooKeeper...");
+            framework = CuratorFrameworkFactory.newClient("127.0.0.1:2181", new ExponentialBackoffRetry(1000, 3));
+            // TODO: Grab lease count somehow :C
+            final InterProcessSemaphoreV2 semaphore = new InterProcessSemaphoreV2(framework, SHARD_ID_SEMAPHORE, 2);
+        }
+    }
+    
+    void startBot(final int shardId, final int shardCount) {
         try {
             jda = new JDABuilder(AccountType.BOT)
                     .useSharding(shardId, shardCount)
@@ -36,5 +74,10 @@ public final class AmybotShard {
         } catch(final LoginException | RateLimitedException e) {
             e.printStackTrace();
         }
+    }
+    
+    public enum InternalEvent {
+        READY,
+        DISCONNECT,
     }
 }
