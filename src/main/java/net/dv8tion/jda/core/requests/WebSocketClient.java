@@ -16,6 +16,8 @@
 
 package net.dv8tion.jda.core.requests;
 
+import chat.amy.gateway.GatewayConnection;
+import chat.amy.jda.WrappedEvent;
 import com.neovisionaries.ws.client.*;
 import gnu.trove.iterator.TLongObjectIterator;
 import gnu.trove.map.TLongObjectMap;
@@ -128,7 +130,6 @@ public class WebSocketClient extends WebSocketAdapter implements WebSocketListen
             if(firstInit) {
                 firstInit = false;
                 JDAImpl.LOG.info("Finished Loading!");
-                JDAImpl.LOG.info("### TEST ###");
                 if(api.getGuilds().size() >= 2500) //Show large warning when connected to >2500 guilds
                 {
                     JDAImpl.LOG.warn(" __      __ _    ___  _  _  ___  _  _   ___  _ ");
@@ -141,6 +142,9 @@ public class WebSocketClient extends WebSocketAdapter implements WebSocketListen
                     JDAImpl.LOG.warn("connection might not work as expected.");
                     JDAImpl.LOG.warn("For more info see https://git.io/vrFWP");
                 }
+                System.out.println("################################################################################");
+                System.out.println("#     If you see this, we successfully shaded over the JDA WebSocketClient     #");
+                System.out.println("################################################################################");
                 api.getEventManager().handle(new ReadyEvent(api, api.getResponseTotal()));
             } else {
                 updateAudioManagerReferences();
@@ -732,6 +736,8 @@ public class WebSocketClient extends WebSocketAdapter implements WebSocketListen
         LOG.trace(String.format("%s -> %s", type, content.toString()));
         
         try {
+            // Just dump every event in and pray that the gateway can figure it out for us
+            GatewayConnection.externalQueue(new WrappedEvent(type, raw));
             switch(type) {
                 //INIT types
                 case "READY":
