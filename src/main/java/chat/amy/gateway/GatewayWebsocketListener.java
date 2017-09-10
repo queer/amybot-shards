@@ -61,6 +61,8 @@ final class GatewayWebsocketListener extends WebSocketListener {
                 case 1:
                     // TODO: Do we care?
                     break;
+                default:
+                    break;
             }
         } catch(final IOException e) {
             e.printStackTrace();
