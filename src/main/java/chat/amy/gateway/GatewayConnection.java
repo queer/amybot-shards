@@ -8,7 +8,6 @@ import com.google.common.util.concurrent.AbstractScheduledService;
 import lombok.Getter;
 import okhttp3.Request;
 import okhttp3.WebSocket;
-import org.json.JSONObject;
 
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
@@ -20,12 +19,13 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author amy
  * @since 9/4/17.
  */
+@SuppressWarnings("WeakerAccess")
 public final class GatewayConnection {
+    // This being static shouldn't matter, because you should only ever have one instance of this class anyway
+    private static final BlockingQueue<GatewayMessage> queue = new LinkedBlockingDeque<>();
     @Getter
     private final AmybotShard shard;
     private final ObjectMapper mapper = new ObjectMapper();
-    // This being static shouldn't matter, because you should only ever have one instance of this class anyway
-    private static final BlockingQueue<GatewayMessage> queue = new LinkedBlockingDeque<>();
     @Getter
     private final AtomicReference<State> socketState = new AtomicReference<>(State.DISCONNECTED);
     @SuppressWarnings("TypeMayBeWeakened")
@@ -33,18 +33,19 @@ public final class GatewayConnection {
     @Getter
     private WebSocket websocket;
     
-    public static void externalQueue(final WrappedEvent input) {
-        queue(new GatewayMessage(2, input));
-    }
-    
     public GatewayConnection(final AmybotShard shard) {
         this.shard = shard;
+    }
+    
+    public static void externalQueue(final WrappedEvent input) {
+        queue(new GatewayMessage(2, input));
     }
     
     public static void queue(final GatewayMessage message) {
         queue.add(message);
     }
     
+    @SuppressWarnings("UnnecessarilyQualifiedInnerClassAccess")
     public void connect() {
         if(!messagePoller.isRunning()) {
             messagePoller.startAsync();
@@ -83,14 +84,12 @@ public final class GatewayConnection {
     private final class MessagePoller extends AbstractScheduledService {
         @Override
         protected void runOneIteration() throws Exception {
-            if(socketState.get() == GatewayConnection.State.CONNECTED) {
-                if(!queue.isEmpty()) {
-                    try {
-                        final GatewayMessage message = queue.take();
-                        websocket.send(mapper.writeValueAsString(message));
-                    } catch(final InterruptedException | JsonProcessingException e) {
-                        e.printStackTrace();
-                    }
+            if(socketState.get() == GatewayConnection.State.CONNECTED && !queue.isEmpty()) {
+                try {
+                    final GatewayMessage message = queue.take();
+                    websocket.send(mapper.writeValueAsString(message));
+                } catch(final InterruptedException | JsonProcessingException e) {
+                    e.printStackTrace();
                 }
             }
         }
