@@ -26,8 +26,6 @@ import java.util.concurrent.TimeUnit;
  */
 @SuppressWarnings({"unused", "UnnecessarilyQualifiedInnerClassAccess", "WeakerAccess"})
 public final class AmybotShard {
-    public static final String SHARD_ROOT = "/amybot/shard";
-    public static final String SHARD_ID_SEMAPHORE = SHARD_ROOT + "/id";
     @Getter
     @SuppressWarnings("TypeMayBeWeakened")
     private final OkHttpClient client = new OkHttpClient.Builder()
