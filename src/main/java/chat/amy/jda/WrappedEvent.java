@@ -5,10 +5,13 @@ import org.json.JSONObject;
 
 /**
  * @author amy
- * @since 9/8/17.
+ * @since 9/17/17.
  */
 @Value
 public class WrappedEvent {
+    private static final String source = "discord";
+    private final int shard;
+    private final int limit;
     private final String type;
     private final JSONObject data;
 }
