@@ -139,36 +139,40 @@ public final class AmybotShard {
                         e.printStackTrace();
                     }
                 }));
+                eventBus.post(InternalEvent.START_BOT);
             } catch(final IOException | TimeoutException e) {
                 e.printStackTrace();
             }
         }
     }
     
-    void startBot(final int shardId, final int shardCount) {
-        try {
-            // TODO: Poll token bucket until we're allowed to connect
-            // TODO: Build networked SessionReconnectQueue(?)
-            jda = new JDABuilder(AccountType.BOT)
-                    .useSharding(shardId, shardCount)
-                    .setToken(System.getenv("BOT_TOKEN"))
-                    .addEventListener((EventListener) event -> {
-                        if(event instanceof ReadyEvent) {
-                            // TODO: Probably wanna give people another way to set this
-                            jda.getPresence().setGame(Game.of(jda.getSelfUser().getName() + " shard " + shardId + " / " + shardCount));
-                            getLogger().info("Logged in as shard " + shardId + " / " + shardCount);
-                        }
-                    })
-                    .buildAsync();
-        } catch(final LoginException | RateLimitedException e) {
-            e.printStackTrace();
+    @Subscribe
+    public void startBot(final InternalEvent ievent) {
+        if(ievent == InternalEvent.START_BOT) {
+            try {
+                // TODO: Poll token bucket until we're allowed to connect
+                // TODO: Build networked SessionReconnectQueue(?)
+                jda = new JDABuilder(AccountType.BOT)
+                        .useSharding(shardId, shardScale)
+                        .setToken(System.getenv("BOT_TOKEN"))
+                        .addEventListener((EventListener) event -> {
+                            if(event instanceof ReadyEvent) {
+                                // TODO: Probably wanna give people another way to set this
+                                jda.getPresence().setGame(Game.of(jda.getSelfUser().getName() + " shard " + shardId + " / " + shardScale));
+                                getLogger().info("Logged in as shard " + shardId + " / " + shardScale);
+                            }
+                        })
+                        .buildAsync();
+            } catch(final LoginException | RateLimitedException e) {
+                e.printStackTrace();
+            }
         }
     }
     
     public enum InternalEvent {
         GET_SHARD_ID,
         QUEUE_CONNECT,
+        START_BOT,
         READY,
-        DISCONNECT,
     }
 }
