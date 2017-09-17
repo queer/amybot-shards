@@ -102,7 +102,7 @@ public final class AmybotShard {
             try {
                 // TODO: Convert wrapped events into bytes
                 final ObjectMapper mapper = new ObjectMapper();
-                channel.basicPublish("", String.format(GATEWAY_QUEUE, shardId, shardScale), null,
+                channel.basicPublish("", GATEWAY_QUEUE, null,
                         // In THEORY this works?
                         mapper.writeValueAsString(event).getBytes());
             } catch(final IOException e) {
