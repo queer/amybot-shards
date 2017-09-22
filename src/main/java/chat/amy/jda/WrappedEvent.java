@@ -9,7 +9,7 @@ import org.json.JSONObject;
  */
 @Value
 public class WrappedEvent {
-    private static final String source = "discord";
+    private final String source;
     private final int shard;
     private final int limit;
     private final String type;

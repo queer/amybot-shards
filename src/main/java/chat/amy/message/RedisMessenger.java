@@ -17,7 +17,7 @@ public class RedisMessenger implements EventMessenger {
     
     public RedisMessenger() {
         final Config config = new Config();
-        config.useSingleServer().setAddress(Optional.of(System.getenv("REDIS_HOST")).orElse("redis://redis:6379"))
+        config.useSingleServer().setAddress(Optional.ofNullable(System.getenv("REDIS_HOST")).orElse("redis://redis:6379"))
                 // Based on my bot heavily abusing redis as it is, high connection pool size is not a terrible idea.
                 // NOTE: Current live implementation uses like 500 connections in the pool, so TEST TEST TEST
                 // TODO: Determine better sizing
@@ -27,7 +27,7 @@ public class RedisMessenger implements EventMessenger {
     
     @Override
     public void queue(final WrappedEvent event) {
-        final RBlockingQueue<WrappedEvent> eventQueue = redis.getBlockingQueue("discord-input");
+        final RBlockingQueue<WrappedEvent> eventQueue = redis.getBlockingQueue("discord-intake");
         try {
             eventQueue.add(event);
         } catch(final IllegalStateException e) {
@@ -40,7 +40,6 @@ public class RedisMessenger implements EventMessenger {
     
     @Override
     public Optional<WrappedEvent> poll() {
-        final RBlockingQueue<WrappedEvent> eventQueue = redis.getBlockingQueue("discord-input");
-        return Optional.of(eventQueue.poll());
+        throw new UnsupportedOperationException("Shards should not be polling!");
     }
 }

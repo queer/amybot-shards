@@ -38,7 +38,7 @@ public abstract class SocketHandler
     {
         // This intercepts the raw Discord events, and ships them off to our own queue for external processing
         // Minn plz give us a raw WS message event :(
-        AmybotShard.getEventBus().post(new WrappedEvent(api.getShardInfo().getShardId(), api.getShardInfo().getShardTotal(),
+        AmybotShard.getEventBus().post(new WrappedEvent("discord", api.getShardInfo().getShardId(), api.getShardInfo().getShardTotal(),
                 o.getString("t"), o.getJSONObject("d")));
         this.allContent = o;
         this.responseNumber = responseTotal;
