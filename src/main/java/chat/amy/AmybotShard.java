@@ -1,12 +1,10 @@
 package chat.amy;
 
 import chat.amy.jda.WrappedEvent;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import chat.amy.message.EventMessenger;
+import chat.amy.message.RedisMessenger;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
 import lombok.Getter;
 import net.dv8tion.jda.core.AccountType;
 import net.dv8tion.jda.core.JDA;
@@ -20,11 +18,10 @@ import okhttp3.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /**
  * @author amy
@@ -34,8 +31,6 @@ import java.util.concurrent.TimeoutException;
 public final class AmybotShard {
     @Getter
     private static final EventBus eventBus = new EventBus();
-    private static final String RABBITMQ_QUEUE_FORMAT = "discord-shard-%s-%s";
-    private static final String GATEWAY_QUEUE = Optional.of(System.getenv("GATEWAY_QUEUE")).orElse("gateway");
     @Getter
     @SuppressWarnings("TypeMayBeWeakened")
     private final OkHttpClient client = new OkHttpClient.Builder()
@@ -43,13 +38,12 @@ public final class AmybotShard {
             .build();
     @Getter
     private final Logger logger = LoggerFactory.getLogger("amybot-shard");
+    // TODO: Make this configurable or smth
+    private final EventMessenger messenger = new RedisMessenger();
     @Getter
     private JDA jda;
     private int shardId;
     private int shardScale;
-    private ConnectionFactory factory;
-    private Connection connection;
-    private Channel channel;
     
     private AmybotShard() {
         getLogger().info("Starting up new amybot shard...");
@@ -75,6 +69,7 @@ public final class AmybotShard {
     @SuppressWarnings("ConstantConditions")
     public void getShardId(final InternalEvent event) {
         if(event == InternalEvent.GET_SHARD_ID) {
+            // TODO: Make generic shard ID derivation thingie for those who wanna use other things
             getLogger().info("Deriving shard numbers from Rancher...");
             try {
                 final String serviceIndex = client.newCall(new Request.Builder()
@@ -89,61 +84,17 @@ public final class AmybotShard {
                 // 12 containers -> 0 - 11 IDs
                 shardId = Integer.parseInt(serviceIndex) - 1;
                 shardScale = Integer.parseInt(serviceScale);
-                eventBus.post(InternalEvent.QUEUE_CONNECT);
-            } catch(final IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-    
-    @Subscribe
-    public void handleDiscordEvent(final WrappedEvent event) {
-        if(channel != null) {
-            try {
-                // TODO: Convert wrapped events into bytes
-                final ObjectMapper mapper = new ObjectMapper();
-                channel.basicPublish("", GATEWAY_QUEUE, null,
-                        // In THEORY this works?
-                        mapper.writeValueAsString(event).getBytes());
-            } catch(final IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-    
-    @Subscribe
-    public void connectQueues(final InternalEvent event) {
-        if(event == InternalEvent.QUEUE_CONNECT) {
-            factory = new ConnectionFactory();
-            factory.setHost(Optional.of(System.getenv("RABBITMQ_HOST")).orElse("rabbitmq"));
-            try {
-                // Connect
-                connection = factory.newConnection();
-                channel = connection.createChannel();
-                
-                // Declare I/O queues
-                channel.queueDeclare(String.format(RABBITMQ_QUEUE_FORMAT, shardId, shardScale), false,
-                        false, false, null);
-                channel.queueDeclare(GATEWAY_QUEUE, false,
-                        false, false, null);
-                
-                channel.basicConsume(String.format(RABBITMQ_QUEUE_FORMAT, shardId, shardScale), true,
-                        new ShardQueueConsumer(this, channel));
-                
-                // Attempt to cleanly shut down
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                    try {
-                        channel.close();
-                        connection.close();
-                    } catch(final IOException | TimeoutException e) {
-                        e.printStackTrace();
-                    }
-                }));
                 eventBus.post(InternalEvent.START_BOT);
-            } catch(final IOException | TimeoutException e) {
+            } catch(final IOException e) {
                 e.printStackTrace();
             }
         }
+    }
+    
+    @Subscribe
+    public void handleDiscordEvent(@Nonnull final WrappedEvent event) {
+        logger.debug("Queued wrapped " + event.getType() + " event.");
+        messenger.queue(event);
     }
     
     @Subscribe
@@ -160,6 +111,7 @@ public final class AmybotShard {
                                 // TODO: Probably wanna give people another way to set this
                                 jda.getPresence().setGame(Game.of(jda.getSelfUser().getName() + " shard " + shardId + " / " + shardScale));
                                 getLogger().info("Logged in as shard " + shardId + " / " + shardScale);
+                                eventBus.post(InternalEvent.READY);
                             }
                         })
                         .buildAsync();
@@ -171,7 +123,6 @@ public final class AmybotShard {
     
     public enum InternalEvent {
         GET_SHARD_ID,
-        QUEUE_CONNECT,
         START_BOT,
         READY,
     }
