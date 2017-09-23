@@ -43,6 +43,9 @@ public class RedisMessenger implements EventMessenger {
         // because otherwise the backend might not have caches available etc.
         // This is solved by
         // - Get READY event
+        // - Start streaming guilds
+        // - Cache non-guild events that come in while streaming
+        // - When caching finishes, "replay" all events
         
         if(event.getType().equalsIgnoreCase("READY")) {
             // Discord READY event. Cache unavailable guilds, then start streaming
