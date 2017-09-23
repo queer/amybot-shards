@@ -5,11 +5,10 @@ import org.json.JSONObject;
 
 /**
  * @author amy
- * @since 9/17/17.
+ * @since 9/23/17.
  */
 @Value
-public class WrappedEvent {
-    private final String source;
-    private final String type;
+public class RawEvent {
+    private final String raw;
     private final JSONObject data;
 }

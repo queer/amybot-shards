@@ -1,5 +1,6 @@
 package chat.amy.message;
 
+import chat.amy.jda.RawEvent;
 import chat.amy.jda.WrappedEvent;
 
 import java.util.Optional;
@@ -11,7 +12,7 @@ import java.util.Optional;
  * @since 9/22/17.
  */
 public interface EventMessenger {
-    void queue(WrappedEvent event);
+    void queue(RawEvent event);
     
-    Optional<WrappedEvent> poll();
+    Optional<RawEvent> poll();
 }

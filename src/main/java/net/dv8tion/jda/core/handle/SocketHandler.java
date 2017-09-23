@@ -17,7 +17,7 @@
 package net.dv8tion.jda.core.handle;
 
 import chat.amy.AmybotShard;
-import chat.amy.jda.WrappedEvent;
+import chat.amy.jda.RawEvent;import chat.amy.jda.WrappedEvent;
 import net.dv8tion.jda.core.entities.impl.JDAImpl;
 import org.json.JSONObject;
 
@@ -38,8 +38,11 @@ public abstract class SocketHandler
     {
         // This intercepts the raw Discord events, and ships them off to our own queue for external processing
         // Minn plz give us a raw WS message event :(
+        /*
         AmybotShard.getEventBus().post(new WrappedEvent("discord", api.getShardInfo().getShardId(), api.getShardInfo().getShardTotal(),
                 o.getString("t"), o.getJSONObject("d")));
+        */
+        AmybotShard.getEventBus().post(new RawEvent(o.toString(), o));
         this.allContent = o;
         this.responseNumber = responseTotal;
         final Long guildId = handleInternally(o.getJSONObject("d"));

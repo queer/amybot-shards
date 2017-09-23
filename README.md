@@ -2,6 +2,8 @@
 
 The magical thing that dumps Discord events into the backend. :tm:
 
+Due to some needs of mine, this is also a Discord API library, of sorts. Eventually I'll be able to replace JDA, but not any time soon
+
 ## Configuration
 
 The following environment variables are used. Defaults are shown here.

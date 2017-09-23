@@ -1,13 +1,18 @@
 package chat.amy.message;
 
+import chat.amy.cache.guild.Guild;
+import chat.amy.jda.RawEvent;
 import chat.amy.jda.WrappedEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.redisson.Redisson;
 import org.redisson.api.RBlockingQueue;
+import org.redisson.api.RBucket;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -21,8 +26,9 @@ import java.util.stream.StreamSupport;
 @SuppressWarnings("unused")
 public class RedisMessenger implements EventMessenger {
     private final RedissonClient redis;
+    private final ObjectMapper mapper = new ObjectMapper();
     
-    private final List<WrappedEvent> preloadEventCache = new ArrayList<>();
+    private final List<RawEvent> preloadEventCache = new ArrayList<>();
     private List<String> streamableGuilds;
     private int streamedGuildCount = 0;
     private boolean isStreamingGuilds = true;
@@ -38,8 +44,17 @@ public class RedisMessenger implements EventMessenger {
         redis = Redisson.create(config);
     }
     
+    private <T> T readJson(String json, Class<T> c) {
+        try {
+            return mapper.readValue(json, c);
+        } catch(IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
     @Override
-    public void queue(final WrappedEvent event) {
+    public void queue(final RawEvent rawEvent) {
         // So this is actually a bit interesting. We need to not ship off events until we finish streaming all the guilds,
         // because otherwise the backend might not have caches available etc.
         // This is solved by
@@ -47,19 +62,23 @@ public class RedisMessenger implements EventMessenger {
         // - Start streaming guilds
         // - Cache non-guild events that come in while streaming
         // - When caching finishes, "replay" all events
+        final String type = rawEvent.getData().getString("t");
         
-        if(event.getType().equalsIgnoreCase("READY")) {
+        if(type.equalsIgnoreCase("READY")) {
             // Discord READY event. Cache unavailable guilds, then start streaming
-            final JSONArray guilds = event.getData().getJSONArray("guilds");
+            // TODO: Move to Jackson?
+            final JSONArray guilds = rawEvent.getData().getJSONObject("d").getJSONArray("guilds");
             streamableGuilds = StreamSupport.stream(guilds.spliterator(), false)
                     .map(JSONObject.class::cast).map(o -> o.getString("id")).collect(Collectors.toList());
-        } else if(event.getType().equalsIgnoreCase("GUILD_CREATE")) {
+        } else if(type.equalsIgnoreCase("GUILD_CREATE")) {
             // Cache the guild
-            // TODO: Redisson cache
+            Guild guild = readJson(rawEvent.getData().getJSONObject("d").toString(), Guild.class);
+            final RBucket<Guild> bucket = redis.getBucket(String.format("guild:" + guild.getId() + ":bucket"));
+            bucket.set(guild);
+            
+            // If we're streaming guilds, we need to make sure we mark "finished" when we're done
             if(isStreamingGuilds) {
-                final String id = event.getData().getString("id");
-                // If we're streaming guilds, we need to make sure we mark "finished" when we're done
-                if(streamableGuilds.contains(id)) {
+                if(streamableGuilds.contains(guild.getId())) {
                     ++streamedGuildCount;
                     if(streamedGuildCount == streamableGuilds.size()) {
                         isStreamingGuilds = false;
@@ -69,13 +88,13 @@ public class RedisMessenger implements EventMessenger {
             }
         }
         if(isStreamingGuilds) {
-            preloadEventCache.add(event);
+            preloadEventCache.add(rawEvent);
             return;
         }
         
         final RBlockingQueue<WrappedEvent> eventQueue = redis.getBlockingQueue("discord-intake");
         try {
-            eventQueue.add(event);
+            eventQueue.add(new WrappedEvent("discord", type, rawEvent.getData().getJSONObject("d")));
         } catch(final IllegalStateException e) {
             throw new IllegalStateException("Couldn't append to the event queue! This likely means that you have more than " +
                     "4294967295 queued events, which is a REALLY BAD THING!", e);
@@ -85,7 +104,7 @@ public class RedisMessenger implements EventMessenger {
     }
     
     @Override
-    public Optional<WrappedEvent> poll() {
+    public Optional<RawEvent> poll() {
         throw new UnsupportedOperationException("Shards should not be polling!");
     }
 }
