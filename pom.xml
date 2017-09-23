@@ -21,18 +21,18 @@
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
-            <version>3.3.1_276</version>
+            <version>3.3.1_277</version>
         </dependency>
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
-            <version>3.3.1_276</version>
+            <version>3.3.1_277</version>
             <classifier>sources</classifier>
         </dependency>
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
-            <version>3.3.1_276</version>
+            <version>3.3.1_277</version>
             <classifier>javadoc</classifier>
         </dependency>
 
