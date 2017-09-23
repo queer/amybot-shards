@@ -54,6 +54,24 @@ public class RedisMessenger implements EventMessenger {
         }
     }
     
+    private void cacheGuild(RawEvent rawEvent) {
+        // Cache the guild
+        Guild guild = readJson(rawEvent.getData().getJSONObject("d").toString(), Guild.class);
+        final RBucket<Guild> bucket = redis.getBucket(String.format("guild:" + guild.getId() + ":bucket"));
+        bucket.set(guild);
+    
+        // If we're streaming guilds, we need to make sure we mark "finished" when we're done
+        if(isStreamingGuilds) {
+            if(streamableGuilds.contains(guild.getId())) {
+                ++streamedGuildCount;
+                if(streamedGuildCount == streamableGuilds.size()) {
+                    isStreamingGuilds = false;
+                    preloadEventCache.forEach(this::queue);
+                }
+            }
+        }
+    }
+    
     @Override
     @Subscribe
     public void queue(final RawEvent rawEvent) {
@@ -72,22 +90,22 @@ public class RedisMessenger implements EventMessenger {
             final JSONArray guilds = rawEvent.getData().getJSONObject("d").getJSONArray("guilds");
             streamableGuilds = StreamSupport.stream(guilds.spliterator(), false)
                     .map(JSONObject.class::cast).map(o -> o.getString("id")).collect(Collectors.toList());
+            return;
         } else if(type.equalsIgnoreCase("GUILD_CREATE")) {
-            // Cache the guild
-            Guild guild = readJson(rawEvent.getData().getJSONObject("d").toString(), Guild.class);
-            final RBucket<Guild> bucket = redis.getBucket(String.format("guild:" + guild.getId() + ":bucket"));
-            bucket.set(guild);
-            
-            // If we're streaming guilds, we need to make sure we mark "finished" when we're done
-            if(isStreamingGuilds) {
-                if(streamableGuilds.contains(guild.getId())) {
-                    ++streamedGuildCount;
-                    if(streamedGuildCount == streamableGuilds.size()) {
-                        isStreamingGuilds = false;
-                        preloadEventCache.forEach(this::queue);
-                    }
-                }
+            cacheGuild(rawEvent);
+            return;
+        } else if(type.equalsIgnoreCase("GUILD_DELETE")) {
+            // Convert to a GUILD_CREATE for unavailability
+            if(isStreamingGuilds && rawEvent.getData().getJSONObject("d").has("unavailable")
+                    && rawEvent.getData().getJSONObject("d").getBoolean("unavailable")) {
+                cacheGuild(rawEvent);
+            } else {
+                // Otherwise delet
+                Guild guild = readJson(rawEvent.getData().getJSONObject("d").toString(), Guild.class);
+                final RBucket<Guild> bucket = redis.getBucket(String.format("guild:" + guild.getId() + ":bucket"));
+                bucket.delete();
             }
+            return;
         }
         if(isStreamingGuilds) {
             preloadEventCache.add(rawEvent);
