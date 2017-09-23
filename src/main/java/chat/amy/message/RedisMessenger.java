@@ -4,6 +4,7 @@ import chat.amy.cache.guild.Guild;
 import chat.amy.jda.RawEvent;
 import chat.amy.jda.WrappedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.eventbus.Subscribe;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.redisson.Redisson;
@@ -54,6 +55,7 @@ public class RedisMessenger implements EventMessenger {
     }
     
     @Override
+    @Subscribe
     public void queue(final RawEvent rawEvent) {
         // So this is actually a bit interesting. We need to not ship off events until we finish streaming all the guilds,
         // because otherwise the backend might not have caches available etc.

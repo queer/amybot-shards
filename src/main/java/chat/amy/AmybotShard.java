@@ -62,6 +62,7 @@ public final class AmybotShard {
          * - Actually boot shard
          */
         eventBus.register(this);
+        eventBus.register(messenger);
         eventBus.post(InternalEvent.GET_SHARD_ID);
     }
     
@@ -89,12 +90,6 @@ public final class AmybotShard {
                 e.printStackTrace();
             }
         }
-    }
-    
-    @Subscribe
-    public void handleDiscordEvent(@Nonnull final WrappedEvent event) {
-        logger.debug("Queued wrapped " + event.getType() + " event.");
-        messenger.queue(event);
     }
     
     @Subscribe
