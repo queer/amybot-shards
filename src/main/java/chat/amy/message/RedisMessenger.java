@@ -11,6 +11,7 @@ import org.redisson.config.Config;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /**
@@ -22,7 +23,7 @@ public class RedisMessenger implements EventMessenger {
     private final RedissonClient redis;
     
     private final List<WrappedEvent> preloadEventCache = new ArrayList<>();
-    private final List<String> streamableGuilds = new ArrayList<>();
+    private List<String> streamableGuilds;
     private int streamedGuildCount = 0;
     private boolean isStreamingGuilds = true;
     
@@ -50,8 +51,8 @@ public class RedisMessenger implements EventMessenger {
         if(event.getType().equalsIgnoreCase("READY")) {
             // Discord READY event. Cache unavailable guilds, then start streaming
             final JSONArray guilds = event.getData().getJSONArray("guilds");
-            StreamSupport.stream(guilds.spliterator(), false)
-                    .map(JSONObject.class::cast).map(o -> o.getString("id")).forEach(streamableGuilds::add);
+            streamableGuilds = StreamSupport.stream(guilds.spliterator(), false)
+                    .map(JSONObject.class::cast).map(o -> o.getString("id")).collect(Collectors.toList());
         } else if(event.getType().equalsIgnoreCase("GUILD_CREATE")) {
             // Cache the guild
             // TODO: Redisson cache
