@@ -55,7 +55,8 @@ public class RedisMessenger implements EventMessenger {
     }
     
     private void cacheGuild(RawEvent rawEvent) {
-        // Cache the guild
+        // Cache the guild, and all its users at the same time
+        // TODO: Should split this up, rather than cache a giant guild object
         Guild guild = readJson(rawEvent.getData().getJSONObject("d").toString(), Guild.class);
         final RBucket<Guild> bucket = redis.getBucket(String.format("guild:" + guild.getId() + ":bucket"));
         bucket.set(guild);
