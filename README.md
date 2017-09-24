@@ -4,6 +4,10 @@ The magical thing that dumps Discord events into the backend. :tm:
 
 Due to some needs of mine, this is also a Discord API library, of sorts. Eventually I'll be able to replace JDA, but not any time soon
 
+## wtf is wrong with you
+
+Well JDA didn't support what I wanted, and external caching + raw mWS event access is nice. 
+
 ## Configuration
 
 The following environment variables are used. Defaults are shown here.
