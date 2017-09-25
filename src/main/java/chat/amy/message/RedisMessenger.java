@@ -1,6 +1,6 @@
 package chat.amy.message;
 
-import chat.amy.cache.guild.Guild;
+import chat.amy.cache.guild.RawGuild;
 import chat.amy.jda.RawEvent;
 import chat.amy.jda.WrappedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -55,15 +55,21 @@ public class RedisMessenger implements EventMessenger {
     }
     
     private void cacheGuild(RawEvent rawEvent) {
-        // Cache the guild, and all its users at the same time
-        // TODO: Should split this up, rather than cache a giant guild object
-        Guild guild = readJson(rawEvent.getData().getJSONObject("d").toString(), Guild.class);
-        final RBucket<Guild> bucket = redis.getBucket(String.format("guild:" + guild.getId() + ":bucket"));
-        bucket.set(guild);
+        // Cache the rawGuild, and all its users at the same time
+        // TODO: Should split this up, rather than cache a giant rawGuild object
+        // Basically, we should just
+        // - take the members list out
+        // - convert the rawGuild's members list to a list of IDs
+        // - Store the members list as a list of its own, IDs only(?)
+        // - Store users in another list
+        // - Probably store channels elsewhere as well? :V
+        RawGuild rawGuild = readJson(rawEvent.getData().getJSONObject("d").toString(), RawGuild.class);
+        final RBucket<RawGuild> bucket = redis.getBucket(String.format("guild:" + rawGuild.getId() + ":bucket"));
+        bucket.set(rawGuild);
     
         // If we're streaming guilds, we need to make sure we mark "finished" when we're done
         if(isStreamingGuilds) {
-            if(streamableGuilds.contains(guild.getId())) {
+            if(streamableGuilds.contains(rawGuild.getId())) {
                 ++streamedGuildCount;
                 if(streamedGuildCount == streamableGuilds.size()) {
                     isStreamingGuilds = false;
@@ -83,6 +89,11 @@ public class RedisMessenger implements EventMessenger {
         // - Start streaming guilds
         // - Cache non-guild events that come in while streaming
         // - When caching finishes, "replay" all events
+        //
+        // As it turns out, there's actually good reason to not do this in the gateway nodes instead. This is done inside
+        // of the shard process because we need to be sure that events that are cached here actually have all the data
+        // available. The problem is that when we stream guilds from Discord, there is a possibility that we recv. events
+        // during that streaming period.
         final String type = rawEvent.getData().getString("t");
         
         if(type.equalsIgnoreCase("READY")) {
@@ -102,8 +113,8 @@ public class RedisMessenger implements EventMessenger {
                 cacheGuild(rawEvent);
             } else {
                 // Otherwise delet
-                Guild guild = readJson(rawEvent.getData().getJSONObject("d").toString(), Guild.class);
-                final RBucket<Guild> bucket = redis.getBucket(String.format("guild:" + guild.getId() + ":bucket"));
+                RawGuild rawGuild = readJson(rawEvent.getData().getJSONObject("d").toString(), RawGuild.class);
+                final RBucket<RawGuild> bucket = redis.getBucket(String.format("guild:" + rawGuild.getId() + ":bucket"));
                 bucket.delete();
             }
             return;

@@ -9,23 +9,11 @@ import java.util.List;
 
 /**
  * @author amy
- * @since 9/24/17.
+ * @since 9/23/17.
  */
 @Data
 @AllArgsConstructor
-public class Guild {
-    /**
-     * Only sent during GUILD_CREATE
-     */
-    private final List<RawMember> members;
-    /**
-     * Only sent during GUILD_CREATE
-     */
-    private final List<Channel> channels;
-    /**
-     * Only sent during GUILD_CREATE
-     */
-    private final List<PresenceUpdate> presences;
+public class RawGuild {
     private String id;
     private String name;
     private String icon;
@@ -81,5 +69,16 @@ public class Guild {
      */
     @JsonProperty("voice_states")
     private List<VoiceState> voiceStates;
+    /**
+     * Only sent during GUILD_CREATE
+     */
+    private final List<RawMember> members;
+    /**
+     * Only sent during GUILD_CREATE
+     */
+    private final List<Channel> channels;
+    /**
+     * Only sent during GUILD_CREATE
+     */
+    private final List<PresenceUpdate> presences;
 }
-

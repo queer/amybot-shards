@@ -55,7 +55,7 @@ public abstract class SocketHandler
      * @param content
      *      the content of the event to handle
      * @return
-     *      Guild-id if that guild has a lock, or null if successful
+     *      RawGuild-id if that guild has a lock, or null if successful
      */
     protected abstract Long handleInternally(JSONObject content);
     

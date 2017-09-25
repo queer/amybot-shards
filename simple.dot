@@ -1,0 +1,54 @@
+digraph {
+  compound="true"
+
+  "Discord events" -> "mWS connection"
+  "mWS connection" -> "Shard 0"[lhead=cluster_shards]
+
+  "Postgres" -> "Redis"
+  "Redis" -> "Postgres"
+
+  "Shard 0" -> "A"[ltail=cluster_shards,lhead=cluster_gateway]
+  "A" -> "Shard 0"[lhead=cluster_shards,ltail=cluster_gateway]
+  "A" -> "D"[ltail=cluster_gateway,lhead=cluster_backend]
+  "D" -> "A"[ltail=cluster_gateway,ltail=cluster_backend]
+
+  "D" -> "Postgres"[ltail=cluster_backend,lhead=cluster_storage]
+  "A" -> "Postgres"[ltail=cluster_gateway,lhead=cluster_storage]
+  "Shard 1" -> "Postgres"[ltail=cluster_shards,lhead=cluster_storage]
+
+  "D" -> "REST API"
+  "REST API" -> "Discord"
+
+
+  subgraph cluster_storage {
+    label="Storage"
+    "Redis"
+    "Postgres"
+  }
+
+  subgraph cluster_app {
+  subgraph cluster_shards {
+    label="Shards"
+    rank="same"
+    "Shard 0"
+    "Shard 1"
+    "Shard ..."
+  }
+
+  subgraph cluster_gateway {
+    label="Gateway nodes"
+    rank="same"
+    A
+    B
+    C
+  }
+
+  subgraph cluster_backend {
+    label="Backend nodes"
+    rank="same"
+    D
+    E
+    F
+  }
+  }
+}
