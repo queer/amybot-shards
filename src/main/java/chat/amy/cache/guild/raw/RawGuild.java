@@ -1,5 +1,8 @@
-package chat.amy.cache.guild;
+package chat.amy.cache.guild.raw;
 
+import chat.amy.cache.guild.Channel;
+import chat.amy.cache.guild.Emote;
+import chat.amy.cache.guild.Role;
 import chat.amy.cache.voice.VoiceState;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
@@ -80,5 +83,5 @@ public class RawGuild {
     /**
      * Only sent during GUILD_CREATE
      */
-    private final List<PresenceUpdate> presences;
+    private final List<RawPresenceUpdate> presences;
 }

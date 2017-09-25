@@ -1,23 +1,24 @@
 package chat.amy.cache.guild;
 
+import chat.amy.cache.guild.raw.RawGuild;
 import chat.amy.cache.voice.VoiceState;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 /**
  * @author amy
  * @since 9/24/17.
  */
 @Data
-@AllArgsConstructor
 public class Guild {
     /**
      * Only sent during GUILD_CREATE
      */
-    private final List<RawMember> members;
+    private final List<Member> members;
     /**
      * Only sent during GUILD_CREATE
      */
@@ -81,5 +82,41 @@ public class Guild {
      */
     @JsonProperty("voice_states")
     private List<VoiceState> voiceStates;
+    
+    private Guild() {
+        members = new CopyOnWriteArrayList<>();
+        channels = new CopyOnWriteArrayList<>();
+        presences = new CopyOnWriteArrayList<>();
+    }
+    
+    public static Guild fromRaw(final RawGuild r) {
+        final Guild g = new Guild();
+        g.members.addAll(r.getMembers().stream().map(e -> Member.fromRaw(e)).collect(Collectors.toList()));
+        g.channels.addAll(r.getChannels());
+        g.presences.addAll(r.getPresences().stream().map(e -> PresenceUpdate.fromRaw(e)).collect(Collectors.toList()));
+        g.id = r.getId();
+        g.name = r.getName();
+        g.icon = r.getIcon();
+        g.splash = r.getSplash();
+        g.ownerId = r.getOwnerId();
+        g.region = r.getRegion();
+        g.verificationLevel = r.getVerificationLevel();
+        g.defaultMessageNotifications = r.getDefaultMessageNotifications();
+        g.explicitContentFilter = r.getExplicitContentFilter();
+        g.roles = r.getRoles();
+        g.emojis = r.getEmojis();
+        g.features = r.getFeatures();
+        g.mfaLevel = r.getMfaLevel();
+        g.applicationId = r.getApplicationId();
+        g.widgetEnabled = r.isWidgetEnabled();
+        g.widgetChannelId = r.getWidgetChannelId();
+        g.joinedAt = r.getJoinedAt();
+        g.large = r.isLarge();
+        g.unavailable = r.isUnavailable();
+        g.memberCount = r.getMemberCount();
+        g.voiceStates = r.getVoiceStates();
+        
+        return g;
+    }
 }
 

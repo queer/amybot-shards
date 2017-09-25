@@ -1,6 +1,9 @@
 package chat.amy.message;
 
-import chat.amy.cache.guild.RawGuild;
+import chat.amy.cache.guild.Channel;
+import chat.amy.cache.guild.Guild;
+import chat.amy.cache.guild.raw.RawGuild;
+import chat.amy.cache.user.User;
 import chat.amy.jda.RawEvent;
 import chat.amy.jda.WrappedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +18,7 @@ import org.redisson.config.Config;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -29,9 +33,9 @@ public class RedisMessenger implements EventMessenger {
     private final RedissonClient redis;
     private final ObjectMapper mapper = new ObjectMapper();
     
-    private final List<RawEvent> preloadEventCache = new ArrayList<>();
+    private final Collection<RawEvent> preloadEventCache = new ArrayList<>();
     private List<String> streamableGuilds;
-    private int streamedGuildCount = 0;
+    private int streamedGuildCount;
     private boolean isStreamingGuilds = true;
     
     public RedisMessenger() {
@@ -45,28 +49,35 @@ public class RedisMessenger implements EventMessenger {
         redis = Redisson.create(config);
     }
     
-    private <T> T readJson(String json, Class<T> c) {
+    private <T> T readJson(final String json, final Class<T> c) {
         try {
             return mapper.readValue(json, c);
-        } catch(IOException e) {
+        } catch(final IOException e) {
             e.printStackTrace();
             return null;
         }
     }
     
-    private void cacheGuild(RawEvent rawEvent) {
-        // Cache the rawGuild, and all its users at the same time
-        // TODO: Should split this up, rather than cache a giant rawGuild object
-        // Basically, we should just
-        // - take the members list out
-        // - convert the rawGuild's members list to a list of IDs
-        // - Store the members list as a list of its own, IDs only(?)
-        // - Store users in another list
-        // - Probably store channels elsewhere as well? :V
-        RawGuild rawGuild = readJson(rawEvent.getData().getJSONObject("d").toString(), RawGuild.class);
-        final RBucket<RawGuild> bucket = redis.getBucket(String.format("guild:" + rawGuild.getId() + ":bucket"));
-        bucket.set(rawGuild);
-    
+    @SuppressWarnings("ConstantConditions")
+    private void cacheGuild(final RawEvent rawEvent) {
+        // TODO: This is a huge waste of allocations
+        final RawGuild rawGuild = readJson(rawEvent.getData().getJSONObject("d").toString(), RawGuild.class);
+        final Guild guild = Guild.fromRaw(rawGuild);
+        
+        // Bucket the guild
+        final RBucket<Guild> bucket = redis.getBucket("guild:" + guild.getId() + ":bucket");
+        bucket.set(guild);
+        // Bucket all channels in the guild
+        rawGuild.getChannels().forEach(e -> {
+            final RBucket<Channel> channelBucket = redis.getBucket("channel:" + e.getId() + ":bucket");
+            channelBucket.set(e);
+        });
+        // Use the members list to bucket the users
+        rawGuild.getMembers().forEach(e -> {
+            final RBucket<User> userBucket = redis.getBucket("user:" + e.getUser().getId() + ":bucket");
+            userBucket.set(e.getUser());
+        });
+        
         // If we're streaming guilds, we need to make sure we mark "finished" when we're done
         if(isStreamingGuilds) {
             if(streamableGuilds.contains(rawGuild.getId())) {
@@ -79,6 +90,7 @@ public class RedisMessenger implements EventMessenger {
         }
     }
     
+    @SuppressWarnings("ConstantConditions")
     @Override
     @Subscribe
     public void queue(final RawEvent rawEvent) {
@@ -115,8 +127,8 @@ public class RedisMessenger implements EventMessenger {
                 cacheGuild(rawEvent);
             } else {
                 // Otherwise delet
-                RawGuild rawGuild = readJson(rawEvent.getData().getJSONObject("d").toString(), RawGuild.class);
-                final RBucket<RawGuild> bucket = redis.getBucket(String.format("guild:" + rawGuild.getId() + ":bucket"));
+                final RawGuild rawGuild = readJson(rawEvent.getData().getJSONObject("d").toString(), RawGuild.class);
+                final RBucket<RawGuild> bucket = redis.getBucket("guild:" + rawGuild.getId() + ":bucket");
                 bucket.delete();
             }
             return;
