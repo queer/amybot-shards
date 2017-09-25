@@ -82,6 +82,8 @@ public class RedisMessenger implements EventMessenger {
     @Override
     @Subscribe
     public void queue(final RawEvent rawEvent) {
+        // TODO: This logic should probably exist somewhere else...
+        
         // So this is actually a bit interesting. We need to not ship off events until we finish streaming all the guilds,
         // because otherwise the backend might not have caches available etc.
         // This is solved by
