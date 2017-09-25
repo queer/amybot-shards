@@ -1,13 +1,16 @@
 package chat.amy.cache.guild;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * @author amy
  * @since 9/23/17.
  */
 @Data
+@EqualsAndHashCode
 @AllArgsConstructor
 public class PermissionOverwrite {
     private String id;
@@ -23,6 +26,11 @@ public class PermissionOverwrite {
     
         OverwriteType(final String type) {
             this.type = type;
+        }
+        
+        @JsonValue
+        public String toValue() {
+            return type;
         }
     }
 }

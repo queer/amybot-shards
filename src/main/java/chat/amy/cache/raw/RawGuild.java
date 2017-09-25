@@ -1,4 +1,4 @@
-package chat.amy.cache.guild.raw;
+package chat.amy.cache.raw;
 
 import chat.amy.cache.guild.Channel;
 import chat.amy.cache.guild.Emote;
@@ -84,4 +84,6 @@ public class RawGuild {
      * Only sent during GUILD_CREATE
      */
     private final List<RawPresenceUpdate> presences;
+    @JsonProperty("system_channel_id")
+    private String systemChannelId;
 }

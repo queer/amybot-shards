@@ -1,9 +1,11 @@
 package chat.amy.cache.guild;
 
-import chat.amy.cache.guild.raw.RawGuild;
+import chat.amy.cache.raw.RawGuild;
+import chat.amy.cache.presence.PresenceUpdate;
 import chat.amy.cache.voice.VoiceState;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -14,6 +16,7 @@ import java.util.stream.Collectors;
  * @since 9/24/17.
  */
 @Data
+@EqualsAndHashCode
 public class Guild {
     /**
      * Only sent during GUILD_CREATE

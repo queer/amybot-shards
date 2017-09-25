@@ -2,7 +2,7 @@ package chat.amy.message;
 
 import chat.amy.cache.guild.Channel;
 import chat.amy.cache.guild.Guild;
-import chat.amy.cache.guild.raw.RawGuild;
+import chat.amy.cache.raw.RawGuild;
 import chat.amy.cache.user.User;
 import chat.amy.jda.RawEvent;
 import chat.amy.jda.WrappedEvent;

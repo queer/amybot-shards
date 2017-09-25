@@ -1,9 +1,10 @@
 package chat.amy.cache.guild;
 
-import chat.amy.cache.guild.raw.RawMember;
+import chat.amy.cache.raw.RawMember;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.List;
 
@@ -12,11 +13,12 @@ import java.util.List;
  * @since 9/24/17.
  */
 @Data
+@EqualsAndHashCode
 @AllArgsConstructor
 public class Member {
     private String userId;
     private String nickname;
-    private List<Role> roles;
+    private List<String> roles;
     @JsonProperty("joined_at")
     private String joinedAt;
     private boolean deaf;
@@ -28,7 +30,7 @@ public class Member {
     public static Member fromRaw(final RawMember r) {
         final Member m = new Member();
         m.userId = r.getUser().getId();
-        m.nickname = r.getNickname();
+        m.nickname = r.getNick();
         m.roles = r.getRoles();
         m.joinedAt = r.getJoinedAt();
         m.deaf = r.isDeaf();

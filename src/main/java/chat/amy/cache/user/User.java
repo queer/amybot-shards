@@ -12,8 +12,8 @@ import lombok.Data;
 @AllArgsConstructor
 public class User {
     private String id;
-    private String name;
-    private String discrim;
+    private String username;
+    private String discriminator;
     private String avatar;
     private boolean bot;
     @JsonProperty("mfa_enabled")

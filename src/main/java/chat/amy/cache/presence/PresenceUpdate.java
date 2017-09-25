@@ -1,10 +1,10 @@
-package chat.amy.cache.guild;
+package chat.amy.cache.presence;
 
-import chat.amy.cache.guild.raw.RawPresenceUpdate;
-import chat.amy.cache.presence.Game;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+
+import chat.amy.cache.raw.RawPresenceUpdate;
 
 import java.util.List;
 

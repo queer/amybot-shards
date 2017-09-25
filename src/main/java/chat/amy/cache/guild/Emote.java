@@ -3,6 +3,7 @@ package chat.amy.cache.guild;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.List;
 
@@ -11,6 +12,7 @@ import java.util.List;
  * @since 9/23/17.
  */
 @Data
+@EqualsAndHashCode
 @AllArgsConstructor
 public class Emote {
     private String id;

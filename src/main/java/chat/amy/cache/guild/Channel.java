@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.List;
  * @since 9/23/17.
  */
 @Data
+@EqualsAndHashCode
 @AllArgsConstructor
 public class Channel {
     private String id;
@@ -44,6 +46,7 @@ public class Channel {
      */
     @JsonProperty("parent_id")
     private String parentId;
+    private boolean nsfw;
     
     public enum ChannelType {
         GUILD_TEXT(0),

@@ -1,6 +1,5 @@
-package chat.amy.cache.guild.raw;
+package chat.amy.cache.raw;
 
-import chat.amy.cache.presence.Game;
 import chat.amy.cache.user.User;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
@@ -14,11 +13,12 @@ import java.util.List;
  */
 @Data
 @AllArgsConstructor
-public class RawPresenceUpdate {
+public class RawMember {
     private User user;
+    private String nick;
     private List<String> roles;
-    private Game game;
-    @JsonProperty("guild_id")
-    private String guildId;
-    private String status;
+    @JsonProperty("joined_at")
+    private String joinedAt;
+    private boolean deaf;
+    private boolean mute;
 }
