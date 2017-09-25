@@ -31,9 +31,8 @@ import java.util.stream.StreamSupport;
 @SuppressWarnings("unused")
 public class RedisMessenger implements EventMessenger {
     private final RedissonClient redis;
-    private final ObjectMapper mapper = new ObjectMapper();
-    
     private final Collection<RawEvent> preloadEventCache = new ArrayList<>();
+    private final ObjectMapper mapper = new ObjectMapper();
     private List<String> streamableGuilds;
     private int streamedGuildCount;
     private boolean isStreamingGuilds = true;
@@ -138,9 +137,10 @@ public class RedisMessenger implements EventMessenger {
             return;
         }
         
+        // TODO: Probably wanna hold a persistent reference to this
         final RBlockingQueue<WrappedEvent> eventQueue = redis.getBlockingQueue("discord-intake");
         try {
-            eventQueue.add(new WrappedEvent("discord", type, rawEvent.getData().getJSONObject("d")));
+            eventQueue.add(new WrappedEvent("discord", type, mapper.readTree(rawEvent.getRaw())));
         } catch(final IllegalStateException e) {
             throw new IllegalStateException("Couldn't append to the event queue! This likely means that you have more than " +
                     "4294967295 queued events, which is a REALLY BAD THING!", e);
