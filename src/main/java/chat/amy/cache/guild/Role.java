@@ -10,7 +10,7 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class Role {
-    private int id;
+    private String id;
     private String name;
     private int color;
     private boolean hoist;
