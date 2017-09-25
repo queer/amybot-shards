@@ -8,7 +8,6 @@ import lombok.Data;
  * @since 9/23/17.
  */
 @Data
-@AllArgsConstructor
 public class Role {
     private String id;
     private String name;
