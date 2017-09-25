@@ -8,8 +8,9 @@ import lombok.Data;
  * @since 9/23/17.
  */
 @Data
+@AllArgsConstructor
 public class Role {
-    private String id;
+    private final String id;
     private String name;
     private int color;
     private boolean hoist;
