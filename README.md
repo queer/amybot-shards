@@ -30,6 +30,7 @@ REDIS_PASS="dank memes"
 
 ### Some thoughts on caching
 
+- **Redisson is not used anymore.** While unfortunate, this decision was made because Redisson was just like "lol what is serializing correctly :S" and decided to blow it up using the Jackson codec. 
 - All guilds have their own object in the cache
 - All users have their own object in the cache
 - All members lists are a part of their respective guild objects, as a set of Member objects

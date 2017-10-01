@@ -1,26 +1,28 @@
 package chat.amy.message;
 
-import chat.amy.cache.guild.Channel;
 import chat.amy.cache.guild.Guild;
+import chat.amy.cache.guild.Member;
 import chat.amy.cache.raw.RawGuild;
 import chat.amy.cache.user.User;
 import chat.amy.jda.RawEvent;
 import chat.amy.jda.WrappedEvent;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.eventbus.Subscribe;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.redisson.Redisson;
 import org.redisson.api.RBlockingQueue;
 import org.redisson.api.RBucket;
-import org.redisson.api.RedissonClient;
-import org.redisson.config.Config;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -30,7 +32,7 @@ import java.util.stream.StreamSupport;
  */
 @SuppressWarnings("unused")
 public class RedisMessenger implements EventMessenger {
-    private final RedissonClient redis;
+    private final JedisPool redis;
     private final Collection<RawEvent> preloadEventCache = new ArrayList<>();
     private final ObjectMapper mapper = new ObjectMapper();
     private List<String> streamableGuilds;
@@ -38,43 +40,71 @@ public class RedisMessenger implements EventMessenger {
     private boolean isStreamingGuilds = true;
     
     public RedisMessenger() {
-        final Config config = new Config();
-        config.useSingleServer().setAddress(Optional.ofNullable(System.getenv("REDIS_HOST")).orElse("redis://redis:6379"))
-                .setPassword(System.getenv("REDIS_PASS"))
-                // Based on my bot heavily abusing redis as it is, high connection pool size is not a terrible idea.
-                // NOTE: Current live implementation uses like 500 connections in the pool, so TEST TEST TEST
-                // TODO: Determine better sizing
-                .setConnectionPoolSize(128);
-        redis = Redisson.create(config);
+        final JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
+        jedisPoolConfig.setMaxIdle(1024);
+        jedisPoolConfig.setMaxTotal(1024);
+        jedisPoolConfig.setMaxWaitMillis(500);
+        redis = new JedisPool(jedisPoolConfig, Optional.ofNullable(System.getenv("REDIS_HOST")).orElse("redis://redis:6379"));
     }
     
-    private <T> T readJson(final String json, final Class<T> c) {
+    private <T> T readJsonEventData(final String json, final Class<T> c) {
         try {
             return mapper.readValue(json, c);
         } catch(final IOException e) {
-            e.printStackTrace();
-            return null;
+            throw new RuntimeException(e);
+        }
+    }
+    
+    private void cache(Consumer<Jedis> op) {
+        try(Jedis jedis = redis.getResource()) {
+            jedis.auth(System.getenv("REDIS_PASS"));
+            op.accept(jedis);
+        }
+    }
+    
+    private <T> String toJson(T o) {
+        try {
+            return mapper.writeValueAsString(o);
+        } catch(Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
+    /**
+     * Get the <code>d</code> field of the event and parse that into an object.
+     *
+     * @param event Event to parse
+     * @param c     Class to parse to
+     * @param <T>   Type to parse to
+     *
+     * @return Parsed object
+     */
+    private <T> T readJsonEventData(final RawEvent event, final Class<T> c) {
+        try {
+            final JsonNode tree = mapper.readTree(event.getRaw());
+            return mapper.treeToValue(tree.get("d"), c);
+        } catch(final IOException e) {
+            throw new RuntimeException(e);
         }
     }
     
     @SuppressWarnings("ConstantConditions")
     private void cacheGuild(final RawEvent rawEvent) {
-        // TODO: This is a huge waste of allocations
-        final RawGuild rawGuild = readJson(rawEvent.getData().getJSONObject("d").toString(), RawGuild.class);
+        final RawGuild rawGuild = readJsonEventData(rawEvent.getRaw(), RawGuild.class);
         final Guild guild = Guild.fromRaw(rawGuild);
         
         // Bucket the guild
-        final RBucket<Guild> bucket = redis.getBucket("guild:" + guild.getId() + ":bucket");
-        bucket.set(guild);
-        // Bucket all channels in the guild
-        rawGuild.getChannels().forEach(e -> {
-            final RBucket<Channel> channelBucket = redis.getBucket("channel:" + e.getId() + ":bucket");
-            channelBucket.set(e);
-        });
-        // Use the members list to bucket the users
-        rawGuild.getMembers().forEach(e -> {
-            final RBucket<User> userBucket = redis.getBucket("user:" + e.getUser().getId() + ":bucket");
-            userBucket.set(e.getUser());
+        cache(jedis -> {
+            // Bucket the guild
+            jedis.set("guild:" + guild.getId() + ":bucket", toJson(guild));
+            // Bucket each channel
+            rawGuild.getChannels().forEach(channel -> jedis.set("channel:" + channel.getId() + ":bucket", toJson(channel)));
+            // Bucket the users, overwriting old users
+            rawGuild.getMembers().forEach(member -> {
+                final User user = member.getUser();
+                jedis.set("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(member)));
+                jedis.set("user:" + user.getId() + ":bucket", toJson(user));
+            });
         });
         
         // If we're streaming guilds, we need to make sure we mark "finished" when we're done
@@ -126,9 +156,17 @@ public class RedisMessenger implements EventMessenger {
                 cacheGuild(rawEvent);
             } else {
                 // Otherwise delet
-                final RawGuild rawGuild = readJson(rawEvent.getData().getJSONObject("d").toString(), RawGuild.class);
-                final RBucket<RawGuild> bucket = redis.getBucket("guild:" + rawGuild.getId() + ":bucket");
-                bucket.delete();
+                cache(jedis -> {
+                    final RawGuild rawGuild = readJsonEventData(rawEvent, RawGuild.class);
+                    // Nuke channels
+                    jedis.del(rawGuild.getChannels().stream().map(e -> "channel:" + e.getId() + ":bucket").toArray(String[]::new));
+                    // Nuke members
+                    jedis.del(rawGuild.getMembers().stream()
+                            .map(e -> "member:" + rawGuild.getId() +':' + e.getUser().getId() + ":bucket").toArray(String[]::new));
+                    // TODO Work out nuking users
+                    // Nuke the full guild
+                    jedis.del("guild:" + rawGuild.getId() + ":bucket");
+                });
             }
             return;
         }
@@ -137,16 +175,8 @@ public class RedisMessenger implements EventMessenger {
             return;
         }
         
-        // TODO: Probably wanna hold a persistent reference to this
-        final RBlockingQueue<WrappedEvent> eventQueue = redis.getBlockingQueue("discord-intake");
-        try {
-            eventQueue.add(new WrappedEvent("discord", type, mapper.readTree(rawEvent.getRaw())));
-        } catch(final IllegalStateException e) {
-            throw new IllegalStateException("Couldn't append to the event queue! This likely means that you have more than " +
-                    "4294967295 queued events, which is a REALLY BAD THING!", e);
-        } catch(final Exception e) {
-            // TODO: Logging
-        }
+        // Append raw event JSON to the end of the queue
+        cache(jedis -> jedis.rpush("discord-intake", rawEvent.getRaw()));
     }
     
     @Override
