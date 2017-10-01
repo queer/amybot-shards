@@ -5,14 +5,11 @@ import chat.amy.cache.guild.Member;
 import chat.amy.cache.raw.RawGuild;
 import chat.amy.cache.user.User;
 import chat.amy.jda.RawEvent;
-import chat.amy.jda.WrappedEvent;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.eventbus.Subscribe;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.redisson.api.RBlockingQueue;
-import org.redisson.api.RBucket;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
@@ -162,7 +159,7 @@ public class RedisMessenger implements EventMessenger {
                     jedis.del(rawGuild.getChannels().stream().map(e -> "channel:" + e.getId() + ":bucket").toArray(String[]::new));
                     // Nuke members
                     jedis.del(rawGuild.getMembers().stream()
-                            .map(e -> "member:" + rawGuild.getId() +':' + e.getUser().getId() + ":bucket").toArray(String[]::new));
+                            .map(e -> "member:" + rawGuild.getId() + ':' + e.getUser().getId() + ":bucket").toArray(String[]::new));
                     // TODO Work out nuking users
                     // Nuke the full guild
                     jedis.del("guild:" + rawGuild.getId() + ":bucket");

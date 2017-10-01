@@ -1,7 +1,6 @@
 package chat.amy.message;
 
 import chat.amy.jda.RawEvent;
-import chat.amy.jda.WrappedEvent;
 
 import java.util.Optional;
 

@@ -1,6 +1,5 @@
 package chat.amy;
 
-import chat.amy.jda.WrappedEvent;
 import chat.amy.message.EventMessenger;
 import chat.amy.message.RedisMessenger;
 import com.google.common.eventbus.EventBus;
@@ -18,7 +17,6 @@ import okhttp3.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
