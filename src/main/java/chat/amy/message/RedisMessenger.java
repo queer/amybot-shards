@@ -1,5 +1,6 @@
 package chat.amy.message;
 
+import chat.amy.AmybotShard;
 import chat.amy.cache.guild.Guild;
 import chat.amy.cache.guild.Member;
 import chat.amy.cache.raw.RawGuild;
@@ -26,8 +27,9 @@ import java.util.stream.StreamSupport;
  * @author amy
  * @since 9/22/17.
  */
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "FieldCanBeLocal"})
 public class RedisMessenger implements EventMessenger {
+    private final AmybotShard shard;
     private final JedisPool redis;
     private final Collection<RawEvent> preloadEventCache = new ArrayList<>();
     private final ObjectMapper mapper = new ObjectMapper();
@@ -40,7 +42,8 @@ public class RedisMessenger implements EventMessenger {
     private long start;
     private long end;
     
-    public RedisMessenger() {
+    public RedisMessenger(final AmybotShard shard) {
+        this.shard = shard;
         final JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
         jedisPoolConfig.setMaxIdle(1024);
         jedisPoolConfig.setMaxTotal(1024);
@@ -136,7 +139,12 @@ public class RedisMessenger implements EventMessenger {
                 if(streamedGuildCount == streamableGuilds.size()) {
                     isStreamingGuilds = false;
                     end = System.currentTimeMillis();
-                    logger.info("Started up in " + (end - start) + "ms");
+                    cache(jedis -> {
+                        logger.info("Started up in " + (end - start) + "ms");
+                        logger.info("Our caches vs JDA:");
+                        logger.info("Guilds:  {} vs {}", jedis.scard("guild:sset"), shard.getJda().getGuildCache().size());
+                        logger.info("Users:   {} vs {}", jedis.scard("user:sset"), shard.getJda().getUserCache().size());
+                    });
                     preloadEventCache.forEach(this::queue);
                 }
             }

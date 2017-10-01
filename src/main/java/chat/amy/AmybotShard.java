@@ -33,7 +33,7 @@ public final class AmybotShard {
     @Getter
     private final Logger logger = LoggerFactory.getLogger("amybot-shard");
     // TODO: Make this configurable or smth
-    private final EventMessenger messenger = new RedisMessenger();
+    private final EventMessenger messenger = new RedisMessenger(this);
     @Getter
     private JDA jda;
     private int shardId;
