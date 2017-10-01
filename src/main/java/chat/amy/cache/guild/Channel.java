@@ -47,6 +47,8 @@ public class Channel {
     @JsonProperty("parent_id")
     private String parentId;
     private boolean nsfw;
+    @JsonProperty("last_pin_timestamp")
+    private String lastPinTimestamp;
     
     public enum ChannelType {
         GUILD_TEXT(0),
