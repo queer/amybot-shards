@@ -64,18 +64,25 @@ public final class AmybotShard {
     @SuppressWarnings("ConstantConditions")
     public void getShardId(final InternalEvent event) {
         if(event == InternalEvent.GET_SHARD_ID) {
-            final Sharder sharder;
-            switch(Optional.of(System.getenv("SHARDING_METHOD")).orElse("rancher")) {
-                case "env":
-                    sharder = new EnvSharder();
-                    break;
-                case "rancher":
-                default:
-                    sharder = new RancherSharder();
-                    break;
+            try {
+                logger.info("Getting shard IDs...");
+                final Sharder sharder;
+                switch(Optional.of(System.getenv("SHARDING_METHOD")).orElse("rancher")) {
+                    case "env":
+                        sharder = new EnvSharder();
+                        break;
+                    case "rancher":
+                    default:
+                        sharder = new RancherSharder();
+                        break;
+                }
+                shardId = sharder.getShardId();
+                shardScale = sharder.getShardScale();
+                logger.info("This is shard {}/{}", shardId, shardScale);
+            } catch(final Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
             }
-            shardId = sharder.getShardId();
-            shardScale = sharder.getShardScale();
         }
     }
     
