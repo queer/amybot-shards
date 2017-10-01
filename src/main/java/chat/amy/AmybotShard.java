@@ -98,10 +98,11 @@ public final class AmybotShard {
                         .setToken(System.getenv("BOT_TOKEN"))
                         .addEventListener((EventListener) event -> {
                             if(event instanceof ReadyEvent) {
-                                // TODO: Probably wanna give people another way to set this
-                                jda.getPresence().setGame(Game.of(Optional.of(System.getenv("GAME")
-                                        .replace("{id}", "" + shardId).replace("{scale}", "" + shardScale))
-                                        .orElse(jda.getSelfUser().getName() + " shard " + shardId + " / " + shardScale)));
+                                if(System.getenv("GAME") == null) {
+                                    jda.getPresence().setGame(Game.of(jda.getSelfUser().getName() + " shard " + shardId + " / " + shardScale));
+                                } else {
+                                    jda.getPresence().setGame(Game.of(System.getenv("GAME")));
+                                }
                                 getLogger().info("Logged in as shard " + shardId + " / " + shardScale);
                                 eventBus.post(InternalEvent.READY);
                             }
