@@ -33,12 +33,10 @@ public class RedisMessenger implements EventMessenger {
     private final JedisPool redis;
     private final Collection<RawEvent> preloadEventCache = new ArrayList<>();
     private final ObjectMapper mapper = new ObjectMapper();
+    private final Logger logger = LoggerFactory.getLogger("Messenger");
     private List<String> streamableGuilds;
     private int streamedGuildCount;
     private boolean isStreamingGuilds = true;
-    
-    private final Logger logger = LoggerFactory.getLogger("Messenger");
-    
     private long start;
     private long end;
     
@@ -124,9 +122,11 @@ public class RedisMessenger implements EventMessenger {
                 // Bucket members
                 jedis.set("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(member)));
                 // Bucket users
-                jedis.set("user:" + user.getId() + ":bucket", toJson(user));
-                // Bucket user ID
-                jedis.sadd("user:sset", user.getId());
+                if(!jedis.exists("user:" + user.getId() + ":bucket")) {
+                    jedis.set("user:" + user.getId() + ":bucket", toJson(user));
+                    // Bucket user ID
+                    jedis.sadd("user:sset", user.getId());
+                }
                 logger.debug("Bucketed user: {}", user.getId());
             });
             logger.debug("Finished caching guild: {}", guild.getId());
