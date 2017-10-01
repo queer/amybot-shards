@@ -91,7 +91,9 @@ public final class AmybotShard {
                         .addEventListener((EventListener) event -> {
                             if(event instanceof ReadyEvent) {
                                 // TODO: Probably wanna give people another way to set this
-                                jda.getPresence().setGame(Game.of(jda.getSelfUser().getName() + " shard " + shardId + " / " + shardScale));
+                                jda.getPresence().setGame(Game.of(Optional.of(System.getenv("GAME")
+                                        .replace("{id}", "" + shardId).replace("{scale}", "" + shardScale))
+                                        .orElse(jda.getSelfUser().getName() + " shard " + shardId + " / " + shardScale)));
                                 getLogger().info("Logged in as shard " + shardId + " / " + shardScale);
                                 eventBus.post(InternalEvent.READY);
                             }
