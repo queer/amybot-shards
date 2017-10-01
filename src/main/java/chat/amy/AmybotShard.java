@@ -2,6 +2,9 @@ package chat.amy;
 
 import chat.amy.message.EventMessenger;
 import chat.amy.message.RedisMessenger;
+import chat.amy.shard.EnvSharder;
+import chat.amy.shard.RancherSharder;
+import chat.amy.shard.Sharder;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import lombok.Getter;
@@ -12,14 +15,11 @@ import net.dv8tion.jda.core.entities.Game;
 import net.dv8tion.jda.core.events.ReadyEvent;
 import net.dv8tion.jda.core.exceptions.RateLimitedException;
 import net.dv8tion.jda.core.hooks.EventListener;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.LoginException;
-import java.io.IOException;
-import java.util.concurrent.TimeUnit;
+import java.util.Optional;
 
 /**
  * @author amy
@@ -29,11 +29,7 @@ import java.util.concurrent.TimeUnit;
 public final class AmybotShard {
     @Getter
     private static final EventBus eventBus = new EventBus();
-    @Getter
     @SuppressWarnings("TypeMayBeWeakened")
-    private final OkHttpClient client = new OkHttpClient.Builder()
-            .connectTimeout(5, TimeUnit.SECONDS)
-            .build();
     @Getter
     private final Logger logger = LoggerFactory.getLogger("amybot-shard");
     // TODO: Make this configurable or smth
@@ -68,25 +64,18 @@ public final class AmybotShard {
     @SuppressWarnings("ConstantConditions")
     public void getShardId(final InternalEvent event) {
         if(event == InternalEvent.GET_SHARD_ID) {
-            // TODO: Make generic shard ID derivation thingie for those who wanna use other things
-            getLogger().info("Deriving shard numbers from Rancher...");
-            try {
-                final String serviceIndex = client.newCall(new Request.Builder()
-                        .url("http://rancher-metadata/2015-12-19/self/container/service_index")
-                        .build()).execute().body().string();
-                final String serviceName = client.newCall(new Request.Builder()
-                        .url("http://rancher-metadata/2015-12-19/self/container/service_name")
-                        .build()).execute().body().string();
-                final String serviceScale = client.newCall(new Request.Builder()
-                        .url(String.format("http://rancher-metadata/2015-12-19/services/%s/scale", serviceName))
-                        .build()).execute().body().string();
-                // 12 containers -> 0 - 11 IDs
-                shardId = Integer.parseInt(serviceIndex) - 1;
-                shardScale = Integer.parseInt(serviceScale);
-                eventBus.post(InternalEvent.START_BOT);
-            } catch(final IOException e) {
-                e.printStackTrace();
+            final Sharder sharder;
+            switch(Optional.of(System.getenv("SHARDING_METHOD")).orElse("rancher")) {
+                case "env":
+                    sharder = new EnvSharder();
+                    break;
+                case "rancher":
+                default:
+                    sharder = new RancherSharder();
+                    break;
             }
+            shardId = sharder.getShardId();
+            shardScale = sharder.getShardScale();
         }
     }
     
