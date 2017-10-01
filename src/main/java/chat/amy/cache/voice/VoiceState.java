@@ -1,5 +1,6 @@
 package chat.amy.cache.voice;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,6 +11,7 @@ import lombok.Data;
  */
 @Data
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class VoiceState {
     @JsonProperty("guild_id")
     private String guildId;
@@ -26,4 +28,6 @@ public class VoiceState {
     @JsonProperty("self_mute")
     private String selfMute;
     private boolean suppress;
+    @JsonProperty("self_video")
+    private String selfVideo;
 }

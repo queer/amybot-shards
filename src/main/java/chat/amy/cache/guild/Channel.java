@@ -1,6 +1,7 @@
 package chat.amy.cache.guild;
 
 import chat.amy.cache.user.User;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.AllArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.List;
 @Data
 @EqualsAndHashCode
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Channel {
     private String id;
     private ChannelType type;

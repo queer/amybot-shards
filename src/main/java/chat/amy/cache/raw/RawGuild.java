@@ -4,6 +4,7 @@ import chat.amy.cache.guild.Channel;
 import chat.amy.cache.guild.Emote;
 import chat.amy.cache.guild.Role;
 import chat.amy.cache.voice.VoiceState;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -16,6 +17,7 @@ import java.util.List;
  */
 @Data
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class RawGuild {
     private String id;
     private String name;
