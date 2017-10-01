@@ -45,7 +45,7 @@ public class RedisMessenger implements EventMessenger {
         redis = new JedisPool(jedisPoolConfig, Optional.ofNullable(System.getenv("REDIS_HOST")).orElse("redis://redis:6379"));
     }
     
-    private <T> T readJsonEventData(final String json, final Class<T> c) {
+    private <T> T readJson(final String json, final Class<T> c) {
         try {
             return mapper.readValue(json, c);
         } catch(final IOException e) {
@@ -85,7 +85,7 @@ public class RedisMessenger implements EventMessenger {
      *
      * @return Parsed object
      */
-    private <T> T readJsonEventData(final RawEvent event, final Class<T> c) {
+    private <T> T readJson(final RawEvent event, final Class<T> c) {
         try {
             final JsonNode tree = mapper.readTree(event.getRaw());
             return mapper.treeToValue(tree.get("d"), c);
@@ -96,7 +96,7 @@ public class RedisMessenger implements EventMessenger {
     
     @SuppressWarnings("ConstantConditions")
     private void cacheGuild(final RawEvent rawEvent) {
-        final RawGuild rawGuild = readJsonEventData(rawEvent.getRaw(), RawGuild.class);
+        final RawGuild rawGuild = readJson(rawEvent, RawGuild.class);
         final Guild guild = Guild.fromRaw(rawGuild);
         
         cache(jedis -> {
@@ -176,7 +176,7 @@ public class RedisMessenger implements EventMessenger {
             } else {
                 // Otherwise delet
                 cache(jedis -> {
-                    final RawGuild rawGuild = readJsonEventData(rawEvent, RawGuild.class);
+                    final RawGuild rawGuild = readJson(rawEvent, RawGuild.class);
                     // Nuke channels
                     jedis.del(rawGuild.getChannels().stream().map(e -> "channel:" + e.getId() + ":bucket").toArray(String[]::new));
                     // Nuke members
