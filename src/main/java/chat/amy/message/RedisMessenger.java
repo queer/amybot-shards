@@ -193,7 +193,7 @@ public class RedisMessenger implements EventMessenger {
                     final List<String> memberIds = guild.getMembers().stream().map(Member::getUserId).collect(Collectors.toList());
                     // Check against members in every other guild
                     oldGuilds.forEach(e -> {
-                        final Guild other = fromJson(jedis.get("guilds:" + e + ":bucket"), Guild.class);
+                        final Guild other = fromJson(jedis.get("guild:" + e + ":bucket"), Guild.class);
                         // Remove old members
                         other.getMembers().forEach(m -> memberIds.remove(m.getUserId()));
                     });
