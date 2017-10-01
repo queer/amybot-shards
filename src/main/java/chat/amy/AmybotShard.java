@@ -67,7 +67,7 @@ public final class AmybotShard {
             try {
                 logger.info("Getting shard IDs...");
                 final Sharder sharder;
-                switch(Optional.of(System.getenv("SHARDING_METHOD")).orElse("rancher")) {
+                switch(Optional.ofNullable(System.getenv("SHARDING_METHOD")).orElse("rancher")) {
                     case "env":
                         sharder = new EnvSharder();
                         break;
