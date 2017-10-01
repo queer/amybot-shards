@@ -177,16 +177,21 @@ public class RedisMessenger implements EventMessenger {
                 // Otherwise delet
                 cache(jedis -> {
                     final RawGuild rawGuild = readJson(rawEvent, RawGuild.class);
+                    logger.debug("Deleting cached guild: {}", rawGuild.getId());
                     // Get the real guild from the cache
                     final Guild guild = fromJson(jedis.get("guild:" + rawGuild.getId() + ":bucket"), Guild.class);
+                    logger.debug("Got real guild");
                     // Nuke channels
                     jedis.del(guild.getChannels().stream().map(e -> "channel:" + e.getId() + ":bucket").toArray(String[]::new));
+                    logger.debug("Removed cached channels");
                     // Nuke members
                     jedis.del(guild.getMembers().stream()
                             .map(e -> "member:" + rawGuild.getId() + ':' + e.getUserId() + ":bucket").toArray(String[]::new));
+                    logger.debug("Removed cached roles");
                     // Nuke the full guild
                     jedis.del("guild:" + guild.getId() + ":bucket");
                     jedis.srem("guild:sset", guild.getId());
+                    logger.debug("Removed cached guild");
                     // Nuke expired users in the cache
                     final Set<String> oldGuilds = jedis.smembers("guild:sset");
                     // Get list of nuked guild's users
@@ -197,11 +202,14 @@ public class RedisMessenger implements EventMessenger {
                         // Remove old members
                         other.getMembers().forEach(m -> memberIds.remove(m.getUserId()));
                     });
+                    logger.debug("{} users to delete from cache", memberIds.size());
                     // For those who survive, delete them
                     memberIds.forEach(e -> {
                         jedis.del("user:" + e + ":bucket");
                         jedis.srem("user:sset", e);
+                        logger.debug("Removed cached user: {}", e);
                     });
+                    logger.debug("Finished deleting cached guild: {}", rawGuild.getId());
                 });
             }
             return;
