@@ -42,7 +42,7 @@ public class RedisMessenger implements EventMessenger {
         jedisPoolConfig.setMaxIdle(1024);
         jedisPoolConfig.setMaxTotal(1024);
         jedisPoolConfig.setMaxWaitMillis(500);
-        redis = new JedisPool(jedisPoolConfig, Optional.ofNullable(System.getenv("REDIS_HOST")).orElse("redis://redis:6379"));
+        redis = new JedisPool(jedisPoolConfig, Optional.ofNullable(System.getenv("REDIS_HOST")).orElse("redis"));
     }
     
     private <T> T readJson(final String json, final Class<T> c) {
