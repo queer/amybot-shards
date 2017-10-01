@@ -177,6 +177,7 @@ public class RedisMessenger implements EventMessenger {
                 // Otherwise delet
                 cache(jedis -> {
                     final RawGuild rawGuild = readJson(rawEvent, RawGuild.class);
+                    System.out.println(rawGuild);
                     // Nuke channels
                     jedis.del(rawGuild.getChannels().stream().map(e -> "channel:" + e.getId() + ":bucket").toArray(String[]::new));
                     // Nuke members
