@@ -177,24 +177,25 @@ public class RedisMessenger implements EventMessenger {
                 // Otherwise delet
                 cache(jedis -> {
                     final RawGuild rawGuild = readJson(rawEvent, RawGuild.class);
-                    System.out.println(rawGuild);
+                    // Get the real guild from the cache
+                    final Guild guild = fromJson(jedis.get("guild:" + rawGuild.getId() + ":bucket"), Guild.class);
                     // Nuke channels
-                    jedis.del(rawGuild.getChannels().stream().map(e -> "channel:" + e.getId() + ":bucket").toArray(String[]::new));
+                    jedis.del(guild.getChannels().stream().map(e -> "channel:" + e.getId() + ":bucket").toArray(String[]::new));
                     // Nuke members
-                    jedis.del(rawGuild.getMembers().stream()
-                            .map(e -> "member:" + rawGuild.getId() + ':' + e.getUser().getId() + ":bucket").toArray(String[]::new));
+                    jedis.del(guild.getMembers().stream()
+                            .map(e -> "member:" + rawGuild.getId() + ':' + e.getUserId() + ":bucket").toArray(String[]::new));
                     // Nuke the full guild
-                    jedis.del("guild:" + rawGuild.getId() + ":bucket");
-                    jedis.srem("guild:sset", rawGuild.getId());
+                    jedis.del("guild:" + guild.getId() + ":bucket");
+                    jedis.srem("guild:sset", guild.getId());
                     // Nuke expired users in the cache
                     final Set<String> oldGuilds = jedis.smembers("guild:sset");
                     // Get list of nuked guild's users
-                    final List<String> memberIds = rawGuild.getMembers().stream().map(e -> e.getUser().getId()).collect(Collectors.toList());
+                    final List<String> memberIds = guild.getMembers().stream().map(Member::getUserId).collect(Collectors.toList());
                     // Check against members in every other guild
                     oldGuilds.forEach(e -> {
-                        final Guild guild = fromJson(jedis.get("guilds:" + e + ":bucket"), Guild.class);
+                        final Guild other = fromJson(jedis.get("guilds:" + e + ":bucket"), Guild.class);
                         // Remove old members
-                        guild.getMembers().forEach(m -> memberIds.remove(m.getUserId()));
+                        other.getMembers().forEach(m -> memberIds.remove(m.getUserId()));
                     });
                     // For those who survive, delete them
                     memberIds.forEach(e -> {
