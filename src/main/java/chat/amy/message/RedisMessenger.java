@@ -37,6 +37,9 @@ public class RedisMessenger implements EventMessenger {
     
     private final Logger logger = LoggerFactory.getLogger("Messenger");
     
+    private long start;
+    private long end;
+    
     public RedisMessenger() {
         final JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
         jedisPoolConfig.setMaxIdle(1024);
@@ -132,6 +135,8 @@ public class RedisMessenger implements EventMessenger {
                 ++streamedGuildCount;
                 if(streamedGuildCount == streamableGuilds.size()) {
                     isStreamingGuilds = false;
+                    end = System.currentTimeMillis();
+                    logger.info("Started up in " + (end - start) + "ms");
                     preloadEventCache.forEach(this::queue);
                 }
             }
@@ -164,6 +169,7 @@ public class RedisMessenger implements EventMessenger {
             final JSONArray guilds = rawEvent.getData().getJSONObject("d").getJSONArray("guilds");
             streamableGuilds = StreamSupport.stream(guilds.spliterator(), false)
                     .map(JSONObject.class::cast).map(o -> o.getString("id")).collect(Collectors.toList());
+            start = System.currentTimeMillis();
             return;
         } else if(type.equalsIgnoreCase("GUILD_CREATE")) {
             cacheGuild(rawEvent);
