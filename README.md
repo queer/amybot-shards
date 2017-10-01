@@ -35,4 +35,25 @@ REDIS_PASS="dank memes"
 - All users have their own object in the cache
 - All members lists are a part of their respective guild objects, as a set of Member objects
 - Member objects reference their user object by snowflake
-- The list of user / guild IDs are stored as a Redis-backed `Set<String>` of snowflakes
+
+### Caching format
+
+#### Single objects
+
+Guild: `guild:snowflake:bucket`
+
+User: `user:snowflake:bucket`
+
+Member: `member:guild_snowflake:user_snowflake:bucket`
+
+Channel: `channel:snowflake:bucket`
+
+#### Snowflake sets
+
+Users: `user:sset`
+
+Guilds: `guild:sset`
+
+Members: `member:guild_snowflake:sset`?
+
+Channels: `channel:sset`

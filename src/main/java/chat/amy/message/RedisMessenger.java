@@ -10,15 +10,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.eventbus.Subscribe;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -36,6 +35,8 @@ public class RedisMessenger implements EventMessenger {
     private int streamedGuildCount;
     private boolean isStreamingGuilds = true;
     
+    private final Logger logger = LoggerFactory.getLogger("Messenger");
+    
     public RedisMessenger() {
         final JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
         jedisPoolConfig.setMaxIdle(1024);
@@ -52,17 +53,25 @@ public class RedisMessenger implements EventMessenger {
         }
     }
     
-    private void cache(Consumer<Jedis> op) {
+    private void cache(final Consumer<Jedis> op) {
         try(Jedis jedis = redis.getResource()) {
             jedis.auth(System.getenv("REDIS_PASS"));
             op.accept(jedis);
         }
     }
     
-    private <T> String toJson(T o) {
+    private <T> String toJson(final T o) {
         try {
             return mapper.writeValueAsString(o);
-        } catch(Exception e) {
+        } catch(final Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
+    private <T> T fromJson(final String json, final Class<T> c) {
+        try {
+            return mapper.readValue(json, c);
+        } catch(final IOException e) {
             throw new RuntimeException(e);
         }
     }
@@ -90,18 +99,31 @@ public class RedisMessenger implements EventMessenger {
         final RawGuild rawGuild = readJsonEventData(rawEvent.getRaw(), RawGuild.class);
         final Guild guild = Guild.fromRaw(rawGuild);
         
-        // Bucket the guild
         cache(jedis -> {
             // Bucket the guild
+            logger.debug("Caching guild: {}", guild.getId());
             jedis.set("guild:" + guild.getId() + ":bucket", toJson(guild));
+            jedis.sadd("guild:sset", guild.getId());
+            logger.debug("Bucketed guild");
             // Bucket each channel
-            rawGuild.getChannels().forEach(channel -> jedis.set("channel:" + channel.getId() + ":bucket", toJson(channel)));
+            rawGuild.getChannels().forEach(channel -> {
+                jedis.set("channel:" + channel.getId() + ":bucket", toJson(channel));
+                jedis.sadd("channel:sset", channel.getId());
+                logger.debug("Bucketed channel: {}", channel.getId());
+                // TODO: Bucket into categories, voice/text, ...
+            });
             // Bucket the users, overwriting old users
             rawGuild.getMembers().forEach(member -> {
                 final User user = member.getUser();
+                // Bucket members
                 jedis.set("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(member)));
+                // Bucket users
                 jedis.set("user:" + user.getId() + ":bucket", toJson(user));
+                // Bucket user ID
+                jedis.sadd("user:sset", user.getId());
+                logger.debug("Bucketed user: {}", user.getId());
             });
+            logger.debug("Finished caching guild: {}", guild.getId());
         });
         
         // If we're streaming guilds, we need to make sure we mark "finished" when we're done
@@ -160,9 +182,24 @@ public class RedisMessenger implements EventMessenger {
                     // Nuke members
                     jedis.del(rawGuild.getMembers().stream()
                             .map(e -> "member:" + rawGuild.getId() + ':' + e.getUser().getId() + ":bucket").toArray(String[]::new));
-                    // TODO Work out nuking users
                     // Nuke the full guild
                     jedis.del("guild:" + rawGuild.getId() + ":bucket");
+                    jedis.srem("guild:sset", rawGuild.getId());
+                    // Nuke expired users in the cache
+                    final Set<String> oldGuilds = jedis.smembers("guild:sset");
+                    // Get list of nuked guild's users
+                    final List<String> memberIds = rawGuild.getMembers().stream().map(e -> e.getUser().getId()).collect(Collectors.toList());
+                    // Check against members in every other guild
+                    oldGuilds.forEach(e -> {
+                        final Guild guild = fromJson(jedis.get("guilds:" + e + ":bucket"), Guild.class);
+                        // Remove old members
+                        guild.getMembers().forEach(m -> memberIds.remove(m.getUserId()));
+                    });
+                    // For those who survive, delete them
+                    memberIds.forEach(e -> {
+                        jedis.del("user:" + e + ":bucket");
+                        jedis.srem("user:sset", e);
+                    });
                 });
             }
             return;
