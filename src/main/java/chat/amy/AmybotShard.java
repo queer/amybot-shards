@@ -79,6 +79,9 @@ public final class AmybotShard {
                 shardId = sharder.getShardId();
                 shardScale = sharder.getShardScale();
                 logger.info("This is shard {}/{}", shardId, shardScale);
+                logger.info("Snoozing to wait on VisualVM...");
+                Thread.sleep(10000L);
+                logger.info("Done snoozin'!");
                 eventBus.post(InternalEvent.START_BOT);
             } catch(final Exception e) {
                 e.printStackTrace();

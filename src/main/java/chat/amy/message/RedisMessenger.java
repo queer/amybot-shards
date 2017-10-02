@@ -19,6 +19,8 @@ import redis.clients.jedis.JedisPoolConfig;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -98,38 +100,43 @@ public class RedisMessenger implements EventMessenger {
         }
     }
     
+    private final ExecutorService pool = Executors.newCachedThreadPool();
+    
     @SuppressWarnings("ConstantConditions")
     private void cacheGuild(final RawEvent rawEvent) {
         final RawGuild rawGuild = readJson(rawEvent, RawGuild.class);
         final Guild guild = Guild.fromRaw(rawGuild);
-        
-        cache(jedis -> {
-            // Bucket the guild
-            logger.debug("Caching guild: {}", guild.getId());
-            jedis.set("guild:" + guild.getId() + ":bucket", toJson(guild));
-            jedis.sadd("guild:sset", guild.getId());
-            logger.debug("Bucketed guild");
-            // Bucket each channel
-            rawGuild.getChannels().forEach(channel -> {
-                jedis.set("channel:" + channel.getId() + ":bucket", toJson(channel));
-                jedis.sadd("channel:sset", channel.getId());
-                logger.debug("Bucketed channel: {}", channel.getId());
-                // TODO: Bucket into categories, voice/text, ...
+    
+        //noinspection CodeBlock2Expr
+        pool.execute(() -> {
+            cache(jedis -> {
+                // Bucket the guild
+                logger.debug("Caching guild: {}", guild.getId());
+                jedis.set("guild:" + guild.getId() + ":bucket", toJson(guild));
+                jedis.sadd("guild:sset", guild.getId());
+                logger.debug("Bucketed guild");
+                // Bucket each channel
+                rawGuild.getChannels().forEach(channel -> {
+                    jedis.set("channel:" + channel.getId() + ":bucket", toJson(channel));
+                    jedis.sadd("channel:sset", channel.getId());
+                    logger.debug("Bucketed channel: {}", channel.getId());
+                    // TODO: Bucket into categories, voice/text, ...
+                });
+                // Bucket the users, overwriting old users
+                rawGuild.getMembers().forEach(member -> {
+                    final User user = member.getUser();
+                    // Bucket members
+                    jedis.set("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(member)));
+                    // Bucket users
+                    if(!jedis.exists("user:" + user.getId() + ":bucket")) {
+                        jedis.set("user:" + user.getId() + ":bucket", toJson(user));
+                        // Bucket user ID
+                        jedis.sadd("user:sset", user.getId());
+                    }
+                    logger.debug("Bucketed user: {}", user.getId());
+                });
+                logger.debug("Finished caching guild: {}", guild.getId());
             });
-            // Bucket the users, overwriting old users
-            rawGuild.getMembers().forEach(member -> {
-                final User user = member.getUser();
-                // Bucket members
-                jedis.set("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(member)));
-                // Bucket users
-                if(!jedis.exists("user:" + user.getId() + ":bucket")) {
-                    jedis.set("user:" + user.getId() + ":bucket", toJson(user));
-                    // Bucket user ID
-                    jedis.sadd("user:sset", user.getId());
-                }
-                logger.debug("Bucketed user: {}", user.getId());
-            });
-            logger.debug("Finished caching guild: {}", guild.getId());
         });
         
         // If we're streaming guilds, we need to make sure we mark "finished" when we're done
