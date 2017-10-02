@@ -62,6 +62,14 @@ public class Channel implements CachedObject<Void> {
         });
     }
     
+    @Override
+    public void uncache(final CacheContext<Void> context) {
+        context.cache(jedis -> {
+            jedis.del("channel:" + getId() + ":bucket", toJson(this));
+            jedis.srem("channel:sset", getId());
+        });
+    }
+    
     public enum ChannelType {
         GUILD_TEXT(0),
         DM(1),

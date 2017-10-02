@@ -67,6 +67,10 @@ Member: `member:guild_snowflake:user_snowflake:bucket`
 
 Channel: `channel:snowflake:bucket`
 
+Role: `role:guild_snowflake:snowflake:bucket`
+
+Emote: `emote:guild_snowflake:snowflake:bucket`
+
 #### Snowflake sets
 
 Users: `user:sset`
@@ -76,3 +80,7 @@ Guilds: `guild:sset`
 Members: `member:guild_snowflake:sset`?
 
 Channels: `channel:sset`
+
+Roles: `role:sset`
+
+Emotes: `emote:sset`

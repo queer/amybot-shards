@@ -7,16 +7,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 
 /**
- * Interface for storing objects in the cache, as well as reading objects out.
+ * Interface for storing objects in the cache, as well as (probably) reading
+ * objects out.
  *
  * @author amy
  * @since 10/2/17.
  */
-@FunctionalInterface
 public interface CachedObject<T> {
     ObjectMapper mapper = new ObjectMapper();
     
     void cache(CacheContext<T> context);
+    
+    void uncache(CacheContext<T> context);
     
     default <T> T readJson(final String json, final Class<T> c) {
         try {

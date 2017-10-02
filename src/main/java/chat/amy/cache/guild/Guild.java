@@ -2,14 +2,15 @@ package chat.amy.cache.guild;
 
 import chat.amy.cache.CacheContext;
 import chat.amy.cache.CachedObject;
-import chat.amy.cache.raw.RawGuild;
 import chat.amy.cache.presence.PresenceUpdate;
+import chat.amy.cache.raw.RawGuild;
 import chat.amy.cache.voice.VoiceState;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
@@ -129,6 +130,30 @@ public final class Guild implements CachedObject<Void> {
         context.cache(jedis -> {
             jedis.set("guild:" + getId() + ":bucket", toJson(this));
             jedis.sadd("guild:sset", getId());
+        });
+    }
+    
+    @Override
+    public void uncache(final CacheContext<Void> context) {
+        context.cache(jedis -> {
+            // Remove ourselves from the cache
+            jedis.del("guild:" + getId() + ":bucket", toJson(this));
+            jedis.srem("guild:sset", getId());
+            // Find if any of our users are still needed, and delete the ones that aren't
+            final Set<String> oldGuilds = jedis.smembers("guild:sset");
+            // Get list of nuked guild's users
+            final List<String> memberIds = members.stream().map(Member::getUserId).collect(Collectors.toList());
+            // Check against members in every other guild
+            oldGuilds.forEach(e -> {
+                final Guild other = readJson(jedis.get("guild:" + e + ":bucket"), Guild.class);
+                // Remove old members
+                other.getMembers().forEach(m -> memberIds.remove(m.getUserId()));
+            });
+            // For those who survive, delete them
+            memberIds.forEach(e -> {
+                jedis.del("user:" + e + ":bucket");
+                jedis.srem("user:sset", e);
+            });
         });
     }
 }

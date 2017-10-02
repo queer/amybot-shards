@@ -31,15 +31,31 @@ public class RawMember implements CachedObject<RawGuild> {
     public void cache(final CacheContext<RawGuild> context) {
         context.cache(jedis -> {
             final User user = getUser();
-            // Bucket members
-            RawGuild guild = context.getData().get(0);
+            // Bucket member
+            final RawGuild guild = context.getData().get(0);
             jedis.set("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(this)));
-            // Bucket users
+            // Bucket user
             if(!jedis.exists("user:" + user.getId() + ":bucket")) {
                 jedis.set("user:" + user.getId() + ":bucket", toJson(user));
                 // Bucket user ID
                 jedis.sadd("user:sset", user.getId());
             }
+        });
+    }
+    
+    @Override
+    public void uncache(final CacheContext<RawGuild> context) {
+        context.cache(jedis -> {
+            final User user = getUser();
+            // Bucket members
+            final RawGuild guild = context.getData().get(0);
+            jedis.del("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(this)));
+            // Don't delete the user bucket because it might still be needed.
+            /*if(jedis.exists("user:" + user.getId() + ":bucket")) {
+                jedis.del("user:" + user.getId() + ":bucket", toJson(user));
+                // Bucket user ID
+                jedis.srem("user:sset", user.getId());
+            }*/
         });
     }
 }

@@ -95,9 +95,19 @@ public final class RawGuild implements CachedObject<Void> {
     
     @Override
     public void cache(final CacheContext<Void> context) {
-        channels.forEach(channel -> channel.cache(context));
-        // Bucket the users, overwriting old users
         final CacheContext<RawGuild> rawGuildCacheContext = CacheContext.fromContext(context, this);
+        channels.forEach(channel -> channel.cache(context));
         members.forEach(member -> member.cache(rawGuildCacheContext));
+        roles.forEach(role -> role.cache(rawGuildCacheContext));
+        emojis.forEach(emote -> emote.cache(rawGuildCacheContext));
+    }
+    
+    @Override
+    public void uncache(final CacheContext<Void> context) {
+        final CacheContext<RawGuild> rawGuildCacheContext = CacheContext.fromContext(context, this);
+        channels.forEach(channel -> channel.uncache(context));
+        members.forEach(member -> member.uncache(rawGuildCacheContext));
+        roles.forEach(role -> role.uncache(rawGuildCacheContext));
+        emojis.forEach(emote -> emote.uncache(rawGuildCacheContext));
     }
 }
