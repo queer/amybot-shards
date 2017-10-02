@@ -26,14 +26,22 @@ Well JDA didn't support what I wanted, and external caching + raw mWS event acce
 
 ## Configuration
 
-The following environment variables are used. Defaults are shown here.
+Configuration is done through environment variables.
 
 ```bash
 # The token for your bot
 BOT_TOKEN="no default provided, obviously"
-# The URL of your redis host. Currently can only be used in single-node mode, but I want to add cluster support eventually
+# Your redis host address. Default is 'redis'
 REDIS_HOST="redis"
+# The password to your redis host. This is a requirement
 REDIS_PASS="a"
+# How to derive shard id / scale. Default method is the Rancher metadata service, but may also be configured through environment variables
+# Possible values: "rancher", "env"
+SHARDING_METHOD="rancher"
+# Used when SHARDING_METHOD="env"
+SHARD_ID=15
+# Used when SHARDING_METHOD="env"
+SHARD_SCALE=27
 ```
 
 ## Other
@@ -45,6 +53,7 @@ REDIS_PASS="a"
 - All users have their own object in the cache
 - All members lists are a part of their respective guild objects, as a set of Member objects
 - Member objects reference their user object by snowflake
+- Building initial caches is pretty heavily abusive to the redis server; make sure you're actually ready for this. 
 
 ### Caching format
 
