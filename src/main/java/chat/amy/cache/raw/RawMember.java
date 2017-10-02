@@ -1,5 +1,8 @@
 package chat.amy.cache.raw;
 
+import chat.amy.cache.CacheContext;
+import chat.amy.cache.CachedObject;
+import chat.amy.cache.guild.Member;
 import chat.amy.cache.user.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -15,7 +18,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class RawMember {
+public class RawMember implements CachedObject<RawGuild> {
     private User user;
     private String nick;
     private List<String> roles;
@@ -23,4 +26,20 @@ public class RawMember {
     private String joinedAt;
     private boolean deaf;
     private boolean mute;
+    
+    @Override
+    public void cache(final CacheContext<RawGuild> context) {
+        context.cache(jedis -> {
+            final User user = getUser();
+            // Bucket members
+            RawGuild guild = context.getData().get(0);
+            jedis.set("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(this)));
+            // Bucket users
+            if(!jedis.exists("user:" + user.getId() + ":bucket")) {
+                jedis.set("user:" + user.getId() + ":bucket", toJson(user));
+                // Bucket user ID
+                jedis.sadd("user:sset", user.getId());
+            }
+        });
+    }
 }

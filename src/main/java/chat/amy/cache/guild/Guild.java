@@ -1,5 +1,7 @@
 package chat.amy.cache.guild;
 
+import chat.amy.cache.CacheContext;
+import chat.amy.cache.CachedObject;
 import chat.amy.cache.raw.RawGuild;
 import chat.amy.cache.presence.PresenceUpdate;
 import chat.amy.cache.voice.VoiceState;
@@ -17,7 +19,7 @@ import java.util.stream.Collectors;
  */
 @Data
 @EqualsAndHashCode
-public class Guild {
+public final class Guild implements CachedObject<Void> {
     /**
      * Only sent during GUILD_CREATE
      */
@@ -94,9 +96,9 @@ public class Guild {
     
     public static Guild fromRaw(final RawGuild r) {
         final Guild g = new Guild();
-        g.members.addAll(r.getMembers().stream().map(e -> Member.fromRaw(e)).collect(Collectors.toList()));
+        g.members.addAll(r.getMembers().stream().map(Member::fromRaw).collect(Collectors.toList()));
         g.channels.addAll(r.getChannels());
-        g.presences.addAll(r.getPresences().stream().map(e -> PresenceUpdate.fromRaw(e)).collect(Collectors.toList()));
+        g.presences.addAll(r.getPresences().stream().map(PresenceUpdate::fromRaw).collect(Collectors.toList()));
         g.id = r.getId();
         g.name = r.getName();
         g.icon = r.getIcon();
@@ -120,6 +122,14 @@ public class Guild {
         g.voiceStates = r.getVoiceStates();
         
         return g;
+    }
+    
+    @Override
+    public void cache(final CacheContext<Void> context) {
+        context.cache(jedis -> {
+            jedis.set("guild:" + getId() + ":bucket", toJson(this));
+            jedis.sadd("guild:sset", getId());
+        });
     }
 }
 

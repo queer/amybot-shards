@@ -1,5 +1,7 @@
 package chat.amy.cache.guild;
 
+import chat.amy.cache.CacheContext;
+import chat.amy.cache.CachedObject;
 import chat.amy.cache.user.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -19,7 +21,7 @@ import java.util.List;
 @EqualsAndHashCode
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Channel {
+public class Channel implements CachedObject<Void> {
     private String id;
     private ChannelType type;
     @JsonProperty("guild_id")
@@ -51,6 +53,14 @@ public class Channel {
     private boolean nsfw;
     @JsonProperty("last_pin_timestamp")
     private String lastPinTimestamp;
+    
+    @Override
+    public void cache(final CacheContext<Void> context) {
+        context.cache(jedis -> {
+            jedis.set("channel:" + getId() + ":bucket", toJson(this));
+            jedis.sadd("channel:sset", getId());
+        });
+    }
     
     public enum ChannelType {
         GUILD_TEXT(0),

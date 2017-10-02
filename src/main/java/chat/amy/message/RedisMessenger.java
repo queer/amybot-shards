@@ -1,10 +1,10 @@
 package chat.amy.message;
 
 import chat.amy.AmybotShard;
+import chat.amy.cache.CacheContext;
 import chat.amy.cache.guild.Guild;
 import chat.amy.cache.guild.Member;
 import chat.amy.cache.raw.RawGuild;
-import chat.amy.cache.user.User;
 import chat.amy.jda.RawEvent;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,13 +29,14 @@ import java.util.stream.StreamSupport;
  * @author amy
  * @since 9/22/17.
  */
-@SuppressWarnings({"unused", "FieldCanBeLocal"})
+@SuppressWarnings("FieldCanBeLocal")
 public class RedisMessenger implements EventMessenger {
     private final AmybotShard shard;
     private final JedisPool redis;
     private final Collection<RawEvent> preloadEventCache = new ArrayList<>();
     private final ObjectMapper mapper = new ObjectMapper();
     private final Logger logger = LoggerFactory.getLogger("Messenger");
+    private final ExecutorService pool = Executors.newCachedThreadPool();
     private List<String> streamableGuilds;
     private int streamedGuildCount;
     private boolean isStreamingGuilds = true;
@@ -51,26 +52,10 @@ public class RedisMessenger implements EventMessenger {
         redis = new JedisPool(jedisPoolConfig, Optional.ofNullable(System.getenv("REDIS_HOST")).orElse("redis"));
     }
     
-    private <T> T readJson(final String json, final Class<T> c) {
-        try {
-            return mapper.readValue(json, c);
-        } catch(final IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-    
     private void cache(final Consumer<Jedis> op) {
         try(Jedis jedis = redis.getResource()) {
             jedis.auth(System.getenv("REDIS_PASS"));
             op.accept(jedis);
-        }
-    }
-    
-    private <T> String toJson(final T o) {
-        try {
-            return mapper.writeValueAsString(o);
-        } catch(final Exception e) {
-            throw new RuntimeException(e);
         }
     }
     
@@ -100,15 +85,17 @@ public class RedisMessenger implements EventMessenger {
         }
     }
     
-    private final ExecutorService pool = Executors.newCachedThreadPool();
-    
     @SuppressWarnings("ConstantConditions")
     private void cacheGuild(final RawEvent rawEvent) {
         final RawGuild rawGuild = readJson(rawEvent, RawGuild.class);
         final Guild guild = Guild.fromRaw(rawGuild);
-    
+        
+        // TODO: It's probably a better idea to bucket stuff into hashes, but that spreads data around more :I
+        // This seems Fast Enough:tm: for now; prod. shard boots about 3 seconds after finishing the login,
+        // which is probably good enough for this.
         //noinspection CodeBlock2Expr
         pool.execute(() -> {
+            /*
             cache(jedis -> {
                 // Bucket the guild
                 logger.debug("Caching guild: {}", guild.getId());
@@ -137,6 +124,11 @@ public class RedisMessenger implements EventMessenger {
                 });
                 logger.debug("Finished caching guild: {}", guild.getId());
             });
+            */
+            // Bucket the guild itself
+            guild.cache(new CacheContext<>(redis));
+            // Bucket channels, members, roles, ...
+            rawGuild.cache(new CacheContext<>(redis));
         });
         
         // If we're streaming guilds, we need to make sure we mark "finished" when we're done

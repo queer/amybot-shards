@@ -1,8 +1,12 @@
 package chat.amy.cache.raw;
 
+import chat.amy.cache.CacheContext;
+import chat.amy.cache.CachedObject;
 import chat.amy.cache.guild.Channel;
 import chat.amy.cache.guild.Emote;
+import chat.amy.cache.guild.Member;
 import chat.amy.cache.guild.Role;
+import chat.amy.cache.user.User;
 import chat.amy.cache.voice.VoiceState;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -18,7 +22,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class RawGuild {
+public final class RawGuild implements CachedObject<Void> {
     private String id;
     private String name;
     private String icon;
@@ -88,4 +92,12 @@ public class RawGuild {
     private final List<RawPresenceUpdate> presences;
     @JsonProperty("system_channel_id")
     private String systemChannelId;
+    
+    @Override
+    public void cache(final CacheContext<Void> context) {
+        channels.forEach(channel -> channel.cache(context));
+        // Bucket the users, overwriting old users
+        final CacheContext<RawGuild> rawGuildCacheContext = CacheContext.fromContext(context, this);
+        members.forEach(member -> member.cache(rawGuildCacheContext));
+    }
 }
