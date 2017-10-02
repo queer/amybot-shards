@@ -1,6 +1,6 @@
 package chat.amy.cache.guild;
 
-import chat.amy.cache.CacheContext;
+import chat.amy.cache.context.CacheContext;
 import chat.amy.cache.CachedObject;
 import chat.amy.cache.raw.RawGuild;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -28,7 +28,7 @@ public class Emote implements CachedObject<RawGuild> {
     @Override
     public void cache(final CacheContext<RawGuild> context) {
         context.cache(jedis -> {
-            jedis.set("emote:" + context.getData().get(0).getId() + ':' + id + ":bucket", toJson(this));
+            jedis.set("emote:" + context.getData().getId() + ':' + id + ":bucket", toJson(this));
             jedis.sadd("emote:sset", id);
         });
     }
@@ -36,7 +36,7 @@ public class Emote implements CachedObject<RawGuild> {
     @Override
     public void uncache(final CacheContext<RawGuild> context) {
         context.cache(jedis -> {
-            jedis.del("emote:" + context.getData().get(0).getId() + ':' + id + ":bucket", toJson(this));
+            jedis.del("emote:" + context.getData().getId() + ':' + id + ":bucket", toJson(this));
             jedis.srem("emote:sset", id);
         });
     }

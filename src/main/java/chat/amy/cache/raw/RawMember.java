@@ -1,6 +1,6 @@
 package chat.amy.cache.raw;
 
-import chat.amy.cache.CacheContext;
+import chat.amy.cache.context.CacheContext;
 import chat.amy.cache.CachedObject;
 import chat.amy.cache.guild.Member;
 import chat.amy.cache.user.User;
@@ -32,7 +32,7 @@ public class RawMember implements CachedObject<RawGuild> {
         context.cache(jedis -> {
             final User user = getUser();
             // Bucket member
-            final RawGuild guild = context.getData().get(0);
+            final RawGuild guild = context.getData();
             jedis.set("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(this)));
             // Bucket user
             if(!jedis.exists("user:" + user.getId() + ":bucket")) {
@@ -48,7 +48,7 @@ public class RawMember implements CachedObject<RawGuild> {
         context.cache(jedis -> {
             final User user = getUser();
             // Bucket members
-            final RawGuild guild = context.getData().get(0);
+            final RawGuild guild = context.getData();
             jedis.del("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(this)));
             // Don't delete the user bucket because it might still be needed.
             /*if(jedis.exists("user:" + user.getId() + ":bucket")) {

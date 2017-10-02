@@ -1,7 +1,8 @@
 package chat.amy.cache.guild;
 
-import chat.amy.cache.CacheContext;
+import chat.amy.cache.context.CacheContext;
 import chat.amy.cache.CachedObject;
+import chat.amy.cache.context.CacheReadContext;
 import chat.amy.cache.presence.PresenceUpdate;
 import chat.amy.cache.raw.RawGuild;
 import chat.amy.cache.voice.VoiceState;
@@ -145,7 +146,8 @@ public final class Guild implements CachedObject<Void> {
             final List<String> memberIds = members.stream().map(Member::getUserId).collect(Collectors.toList());
             // Check against members in every other guild
             oldGuilds.forEach(e -> {
-                final Guild other = readJson(jedis.get("guild:" + e + ":bucket"), Guild.class);
+                final Guild other = CachedObject.cacheRead(CacheReadContext.fromContext(context, "\"guild:\" + e + \":bucket\"", Guild.class));
+                //final Guild other = readJson(jedis.get("guild:" + e + ":bucket"), Guild.class);
                 // Remove old members
                 other.getMembers().forEach(m -> memberIds.remove(m.getUserId()));
             });

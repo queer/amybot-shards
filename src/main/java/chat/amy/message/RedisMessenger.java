@@ -1,9 +1,8 @@
 package chat.amy.message;
 
 import chat.amy.AmybotShard;
-import chat.amy.cache.CacheContext;
+import chat.amy.cache.context.CacheContext;
 import chat.amy.cache.guild.Guild;
-import chat.amy.cache.guild.Member;
 import chat.amy.cache.raw.RawGuild;
 import chat.amy.jda.RawEvent;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,7 +17,10 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -95,36 +97,6 @@ public class RedisMessenger implements EventMessenger {
         // which is probably good enough for this.
         //noinspection CodeBlock2Expr
         pool.execute(() -> {
-            /*
-            cache(jedis -> {
-                // Bucket the guild
-                logger.debug("Caching guild: {}", guild.getId());
-                jedis.set("guild:" + guild.getId() + ":bucket", toJson(guild));
-                jedis.sadd("guild:sset", guild.getId());
-                logger.debug("Bucketed guild");
-                // Bucket each channel
-                rawGuild.getChannels().forEach(channel -> {
-                    jedis.set("channel:" + channel.getId() + ":bucket", toJson(channel));
-                    jedis.sadd("channel:sset", channel.getId());
-                    logger.debug("Bucketed channel: {}", channel.getId());
-                    // TODO: Bucket into categories, voice/text, ...
-                });
-                // Bucket the users, overwriting old users
-                rawGuild.getMembers().forEach(member -> {
-                    final User user = member.getUser();
-                    // Bucket members
-                    jedis.set("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(member)));
-                    // Bucket users
-                    if(!jedis.exists("user:" + user.getId() + ":bucket")) {
-                        jedis.set("user:" + user.getId() + ":bucket", toJson(user));
-                        // Bucket user ID
-                        jedis.sadd("user:sset", user.getId());
-                    }
-                    logger.debug("Bucketed user: {}", user.getId());
-                });
-                logger.debug("Finished caching guild: {}", guild.getId());
-            });
-            */
             // Bucket the guild itself
             guild.cache(new CacheContext<>(redis));
             // Bucket channels, members, roles, ...
@@ -169,63 +141,40 @@ public class RedisMessenger implements EventMessenger {
         // available. The problem is that when we stream guilds from Discord, there is a possibility that we recv. events
         // during that streaming period.
         final String type = rawEvent.getData().getString("t");
-        
-        if(type.equalsIgnoreCase("READY")) {
-            // Discord READY event. Cache unavailable guilds, then start streaming
-            // TODO: Move to Jackson?
-            final JSONArray guilds = rawEvent.getData().getJSONObject("d").getJSONArray("guilds");
-            streamableGuilds = StreamSupport.stream(guilds.spliterator(), false)
-                    .map(JSONObject.class::cast).map(o -> o.getString("id")).collect(Collectors.toList());
-            start = System.currentTimeMillis();
-            return;
-        } else if(type.equalsIgnoreCase("GUILD_CREATE")) {
-            cacheGuild(rawEvent);
-            return;
-        } else if(type.equalsIgnoreCase("GUILD_DELETE")) {
-            // Convert to a GUILD_CREATE for unavailability
-            if(isStreamingGuilds && rawEvent.getData().getJSONObject("d").has("unavailable")
-                    && rawEvent.getData().getJSONObject("d").getBoolean("unavailable")) {
+    
+        switch(type) {
+            case "READY":
+                // Discord READY event. Cache unavailable guilds, then start streaming
+                // TODO: Move to Jackson?
+                final JSONArray guilds = rawEvent.getData().getJSONObject("d").getJSONArray("guilds");
+                streamableGuilds = StreamSupport.stream(guilds.spliterator(), false)
+                        .map(JSONObject.class::cast).map(o -> o.getString("id")).collect(Collectors.toList());
+                start = System.currentTimeMillis();
+                return;
+            case "GUILD_CREATE":
                 cacheGuild(rawEvent);
-            } else {
-                // Otherwise delet
-                cache(jedis -> {
-                    final RawGuild rawGuild = readJson(rawEvent, RawGuild.class);
-                    logger.debug("Deleting cached guild: {}", rawGuild.getId());
-                    // Get the real guild from the cache
-                    final Guild guild = fromJson(jedis.get("guild:" + rawGuild.getId() + ":bucket"), Guild.class);
-                    logger.debug("Got real guild");
-                    // Nuke channels
-                    jedis.del(guild.getChannels().stream().map(e -> "channel:" + e.getId() + ":bucket").toArray(String[]::new));
-                    logger.debug("Removed cached channels");
-                    // Nuke members
-                    jedis.del(guild.getMembers().stream()
-                            .map(e -> "member:" + rawGuild.getId() + ':' + e.getUserId() + ":bucket").toArray(String[]::new));
-                    logger.debug("Removed cached roles");
-                    // Nuke the full guild
-                    jedis.del("guild:" + guild.getId() + ":bucket");
-                    jedis.srem("guild:sset", guild.getId());
-                    logger.debug("Removed cached guild");
-                    // Nuke expired users in the cache
-                    final Set<String> oldGuilds = jedis.smembers("guild:sset");
-                    // Get list of nuked guild's users
-                    final List<String> memberIds = guild.getMembers().stream().map(Member::getUserId).collect(Collectors.toList());
-                    // Check against members in every other guild
-                    oldGuilds.forEach(e -> {
-                        final Guild other = fromJson(jedis.get("guild:" + e + ":bucket"), Guild.class);
-                        // Remove old members
-                        other.getMembers().forEach(m -> memberIds.remove(m.getUserId()));
+                return;
+            case "GUILD_DELETE":
+                // Convert to a GUILD_CREATE for unavailability
+                if(isStreamingGuilds && rawEvent.getData().getJSONObject("d").has("unavailable")
+                        && rawEvent.getData().getJSONObject("d").getBoolean("unavailable")) {
+                    cacheGuild(rawEvent);
+                } else {
+                    // Otherwise delet
+                    //noinspection CodeBlock2Expr
+                    cache(jedis -> {
+                        pool.execute(() -> {
+                            final RawGuild rawGuild = readJson(rawEvent, RawGuild.class);
+                            final Guild guild = fromJson(jedis.get("guild:" + rawGuild.getId() + ":bucket"), Guild.class);
+                            rawGuild.uncache(new CacheContext<>(redis));
+                            guild.uncache(new CacheContext<>(redis));
+                        });
                     });
-                    logger.debug("{} users to delete from cache", memberIds.size());
-                    // For those who survive, delete them
-                    memberIds.forEach(e -> {
-                        jedis.del("user:" + e + ":bucket");
-                        jedis.srem("user:sset", e);
-                        logger.debug("Removed cached user: {}", e);
-                    });
-                    logger.debug("Finished deleting cached guild: {}", rawGuild.getId());
-                });
-            }
-            return;
+                }
+                return;
+            case "GUILD_MEMBERS_CHUNK":
+                // TODO: Cache these
+                break;
         }
         if(isStreamingGuilds) {
             preloadEventCache.add(rawEvent);

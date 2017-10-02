@@ -1,6 +1,6 @@
 package chat.amy.cache.guild;
 
-import chat.amy.cache.CacheContext;
+import chat.amy.cache.context.CacheContext;
 import chat.amy.cache.CachedObject;
 import chat.amy.cache.raw.RawGuild;
 import lombok.AllArgsConstructor;
@@ -27,7 +27,7 @@ public class Role implements CachedObject<RawGuild> {
     @Override
     public void cache(final CacheContext<RawGuild> context) {
         context.cache(jedis -> {
-            jedis.set("role:" + context.getData().get(0).getId() + ':' + id + ":bucket", toJson(this));
+            jedis.set("role:" + context.getData().getId() + ':' + id + ":bucket", toJson(this));
             jedis.sadd("role:sset", id);
         });
     }
@@ -35,7 +35,7 @@ public class Role implements CachedObject<RawGuild> {
     @Override
     public void uncache(final CacheContext<RawGuild> context) {
         context.cache(jedis -> {
-            jedis.del("role:" + context.getData().get(0).getId() + ':' + id + ":bucket", toJson(this));
+            jedis.del("role:" + context.getData().getId() + ':' + id + ":bucket", toJson(this));
             jedis.srem("role:sset", id);
         });
     }

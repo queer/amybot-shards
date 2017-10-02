@@ -1,12 +1,10 @@
 package chat.amy.cache.raw;
 
-import chat.amy.cache.CacheContext;
+import chat.amy.cache.context.CacheContext;
 import chat.amy.cache.CachedObject;
 import chat.amy.cache.guild.Channel;
 import chat.amy.cache.guild.Emote;
-import chat.amy.cache.guild.Member;
 import chat.amy.cache.guild.Role;
-import chat.amy.cache.user.User;
 import chat.amy.cache.voice.VoiceState;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

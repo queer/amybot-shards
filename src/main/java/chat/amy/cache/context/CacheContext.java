@@ -1,4 +1,4 @@
-package chat.amy.cache;
+package chat.amy.cache.context;
 
 import lombok.Getter;
 import redis.clients.jedis.Jedis;
@@ -13,15 +13,18 @@ import java.util.function.Consumer;
  * @author amy
  * @since 10/2/17.
  */
-public final class CacheContext<T> {
-    private final JedisPool pool;
+public class CacheContext<T> {
+    protected final JedisPool pool;
     @Getter
-    private final List<T> data;
+    private final T data;
     
-    @SafeVarargs
-    public CacheContext(final JedisPool pool, final T... data) {
+    public CacheContext(final JedisPool pool) {
+        this(pool, null);
+    }
+    
+    public CacheContext(final JedisPool pool, final T data) {
         this.pool = pool;
-        this.data = new ArrayList<>(Arrays.asList(data));
+        this.data = data;
     }
     
     public void cache(final Consumer<Jedis> function) {
@@ -30,7 +33,7 @@ public final class CacheContext<T> {
         }
     }
     
-    public static <E> CacheContext<E> fromContext(final CacheContext<?> ctx, final E... data) {
+    public static <E> CacheContext<E> fromContext(final CacheContext<?> ctx, final E data) {
         return new CacheContext<>(ctx.pool, data);
     }
 }

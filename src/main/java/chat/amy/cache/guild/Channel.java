@@ -1,6 +1,6 @@
 package chat.amy.cache.guild;
 
-import chat.amy.cache.CacheContext;
+import chat.amy.cache.context.CacheContext;
 import chat.amy.cache.CachedObject;
 import chat.amy.cache.user.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

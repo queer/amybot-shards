@@ -1,7 +1,7 @@
 package chat.amy.cache;
 
-import chat.amy.jda.RawEvent;
-import com.fasterxml.jackson.databind.JsonNode;
+import chat.amy.cache.context.CacheContext;
+import chat.amy.cache.context.CacheReadContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -16,11 +16,31 @@ import java.io.IOException;
 public interface CachedObject<T> {
     ObjectMapper mapper = new ObjectMapper();
     
+    static <E> E cacheRead(final CacheReadContext<String, Class<E>> context) {
+        try {
+            return mapper.readValue(context.getData(), context.getOtherData());
+        } catch(final IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
+    /**
+     * Store this object in the cache
+     *
+     * @param context The context of the caching. Contains things like Redis
+     *                pool connections.
+     */
     void cache(CacheContext<T> context);
     
+    /**
+     * Delete this object from the cache
+     *
+     * @param context The context of the caching. Contains things like Redis
+     *                pool connections.
+     */
     void uncache(CacheContext<T> context);
     
-    default <T> T readJson(final String json, final Class<T> c) {
+    default <E> E readJson(final String json, final Class<E> c) {
         try {
             return mapper.readValue(json, c);
         } catch(final IOException e) {
@@ -28,28 +48,10 @@ public interface CachedObject<T> {
         }
     }
     
-    default <T> String toJson(final T o) {
+    default <E> String toJson(final E o) {
         try {
             return mapper.writeValueAsString(o);
         } catch(final Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-    
-    /**
-     * Get the <code>d</code> field of the event and parse that into an object.
-     *
-     * @param event Event to parse
-     * @param c     Class to parse to
-     * @param <T>   Type to parse to
-     *
-     * @return Parsed object
-     */
-    default <T> T readJson(final RawEvent event, final Class<T> c) {
-        try {
-            final JsonNode tree = mapper.readTree(event.getRaw());
-            return mapper.treeToValue(tree.get("d"), c);
-        } catch(final IOException e) {
             throw new RuntimeException(e);
         }
     }
