@@ -1,6 +1,6 @@
 package chat.amy.message;
 
-import chat.amy.jda.RawEvent;
+import chat.amy.discord.RawEvent;
 
 import java.util.Optional;
 

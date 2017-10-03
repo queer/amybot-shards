@@ -8,7 +8,7 @@ import chat.amy.cache.guild.Guild;
 import chat.amy.cache.guild.Member;
 import chat.amy.cache.raw.RawGuild;
 import chat.amy.cache.raw.RawMember;
-import chat.amy.jda.RawEvent;
+import chat.amy.discord.RawEvent;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.eventbus.Subscribe;

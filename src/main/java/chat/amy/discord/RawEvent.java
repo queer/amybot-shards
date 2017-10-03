@@ -1,4 +1,4 @@
-package chat.amy.jda;
+package chat.amy.discord;
 
 import lombok.Value;
 import org.json.JSONObject;

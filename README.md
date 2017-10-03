@@ -2,6 +2,10 @@
 
 The magical thing that dumps Discord events into the backend. :tm:
 
+![Powered by Shreddo](https://img.shields.io/badge/Powered%20by-Shreddo-FF69B4.svg)
+
+Much thanks to [Shredder121](https://github.com/shredder121) for yelling at me when I make dumb decisions, and for generally being awesome. 
+
 Due to some needs of mine, this is also a Discord API library, of sorts. Eventually I'll be able to replace JDA, but not any time soon
 
 ## Badges

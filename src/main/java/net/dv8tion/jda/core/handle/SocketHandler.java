@@ -17,7 +17,7 @@
 package net.dv8tion.jda.core.handle;
 
 import chat.amy.AmybotShard;
-import chat.amy.jda.RawEvent;
+import chat.amy.discord.RawEvent;
 import net.dv8tion.jda.core.entities.impl.JDAImpl;
 import org.json.JSONObject;
 
