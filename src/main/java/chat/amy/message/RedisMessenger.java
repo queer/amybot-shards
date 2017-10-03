@@ -191,13 +191,7 @@ public class RedisMessenger implements EventMessenger {
                 // So we deserialize the members array, and add them to
                 // - The guild in question
                 // - The global set of users, as needed
-                //
-                // Some thoughts so that I don't forget:
-                // - This is a RawMember[]; we should just run it through getUser() and Member#fromRaw and cache those
-                // - Should probably make User implement CachedObject<Void>
-                //
-                // As this is pretty important, I am NOT implementing this while I'm this tired
-                // Get some sleep, THEN implement, ye?
+                // Then re-cache the guild to make sure it's up-to-date
                 final String guildId = data.getString("guild_id");
                 final Guild guild = CachedObject.cacheRead(new CacheReadContext<>(redis, "guild:" + guildId + ":bucket", Guild.class));
                 final CacheContext<String> context = new CacheContext<>(redis, guildId);
