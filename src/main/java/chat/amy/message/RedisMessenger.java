@@ -1,9 +1,13 @@
 package chat.amy.message;
 
 import chat.amy.AmybotShard;
+import chat.amy.cache.CachedObject;
 import chat.amy.cache.context.CacheContext;
+import chat.amy.cache.context.CacheReadContext;
 import chat.amy.cache.guild.Guild;
+import chat.amy.cache.guild.Member;
 import chat.amy.cache.raw.RawGuild;
+import chat.amy.cache.raw.RawMember;
 import chat.amy.jda.RawEvent;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -141,11 +145,12 @@ public class RedisMessenger implements EventMessenger {
         // during that streaming period.
         final String type = rawEvent.getData().getString("t");
         
+        final JSONObject data = rawEvent.getData().getJSONObject("d");
         switch(type) {
             case "READY": {
                 // Discord READY event. Cache unavailable guilds, then start streaming
                 // TODO: Move to Jackson?
-                final JSONArray guilds = rawEvent.getData().getJSONObject("d").getJSONArray("guilds");
+                final JSONArray guilds = data.getJSONArray("guilds");
                 streamableGuilds = StreamSupport.stream(guilds.spliterator(), false)
                         .map(JSONObject.class::cast).map(o -> o.getString("id")).collect(Collectors.toList());
                 start = System.currentTimeMillis();
@@ -157,8 +162,8 @@ public class RedisMessenger implements EventMessenger {
             }
             case "GUILD_DELETE": {
                 // Convert to a GUILD_CREATE for unavailability
-                if(isStreamingGuilds && rawEvent.getData().getJSONObject("d").has("unavailable")
-                        && rawEvent.getData().getJSONObject("d").getBoolean("unavailable")) {
+                if(isStreamingGuilds && data.has("unavailable")
+                        && data.getBoolean("unavailable")) {
                     cacheGuild(rawEvent);
                 } else {
                     // Otherwise delet
@@ -193,7 +198,16 @@ public class RedisMessenger implements EventMessenger {
                 //
                 // As this is pretty important, I am NOT implementing this while I'm this tired
                 // Get some sleep, THEN implement, ye?
-                
+                final String guildId = data.getString("guild_id");
+                final Guild guild = CachedObject.cacheRead(new CacheReadContext<>(redis, "guild:" + guildId + ":bucket", Guild.class));
+                final CacheContext<String> context = new CacheContext<>(redis, guildId);
+                StreamSupport.stream(data.getJSONArray("members").spliterator(), false).map(JSONObject.class::cast)
+                        .forEach(e -> {
+                            final RawMember rawMember = fromJson(e.toString(), RawMember.class);
+                            guild.getMembers().add(Member.fromRaw(rawMember));
+                            rawMember.cache(context);
+                        });
+                guild.cache(new CacheContext<>(redis, null));
                 return;
             }
         }

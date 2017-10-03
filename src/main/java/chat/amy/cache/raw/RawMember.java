@@ -18,7 +18,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class RawMember implements CachedObject<RawGuild> {
+public class RawMember implements CachedObject<String> {
     private User user;
     private String nick;
     private List<String> roles;
@@ -28,23 +28,21 @@ public class RawMember implements CachedObject<RawGuild> {
     private boolean mute;
     
     @Override
-    public void cache(final CacheContext<RawGuild> context) {
+    public void cache(final CacheContext<String> context) {
         context.cache(jedis -> {
             final User user = getUser();
             // Bucket member
-            final RawGuild guild = context.getData();
-            jedis.set("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(this)));
+            jedis.set("member:" + context.getData() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(this)));
             user.cache(CacheContext.fromContext(context, null));
         });
     }
     
     @Override
-    public void uncache(final CacheContext<RawGuild> context) {
+    public void uncache(final CacheContext<String> context) {
         context.cache(jedis -> {
             final User user = getUser();
             // Bucket members
-            final RawGuild guild = context.getData();
-            jedis.del("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(this)));
+            jedis.del("member:" + context.getData() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(this)));
             // Don't delete the user bucket here because it might still be needed.
             // This is handled in Guild#uncache()
             /*if(jedis.exists("user:" + user.getId() + ":bucket")) {
