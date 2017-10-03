@@ -34,12 +34,7 @@ public class RawMember implements CachedObject<RawGuild> {
             // Bucket member
             final RawGuild guild = context.getData();
             jedis.set("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(this)));
-            // Bucket user
-            if(!jedis.exists("user:" + user.getId() + ":bucket")) {
-                jedis.set("user:" + user.getId() + ":bucket", toJson(user));
-                // Bucket user ID
-                jedis.sadd("user:sset", user.getId());
-            }
+            user.cache(CacheContext.fromContext(context, null));
         });
     }
     
@@ -50,7 +45,8 @@ public class RawMember implements CachedObject<RawGuild> {
             // Bucket members
             final RawGuild guild = context.getData();
             jedis.del("member:" + guild.getId() + ':' + user.getId() + ":bucket", toJson(Member.fromRaw(this)));
-            // Don't delete the user bucket because it might still be needed.
+            // Don't delete the user bucket here because it might still be needed.
+            // This is handled in Guild#uncache()
             /*if(jedis.exists("user:" + user.getId() + ":bucket")) {
                 jedis.del("user:" + user.getId() + ":bucket", toJson(user));
                 // Bucket user ID

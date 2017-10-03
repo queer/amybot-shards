@@ -146,7 +146,7 @@ public final class Guild implements CachedObject<Void> {
             final List<String> memberIds = members.stream().map(Member::getUserId).collect(Collectors.toList());
             // Check against members in every other guild
             oldGuilds.forEach(e -> {
-                final Guild other = CachedObject.cacheRead(CacheReadContext.fromContext(context, "\"guild:\" + e + \":bucket\"", Guild.class));
+                final Guild other = CachedObject.cacheRead(CacheReadContext.fromContext(context, "guild:" + e + ":bucket", Guild.class));
                 //final Guild other = readJson(jedis.get("guild:" + e + ":bucket"), Guild.class);
                 // Remove old members
                 other.getMembers().forEach(m -> memberIds.remove(m.getUserId()));

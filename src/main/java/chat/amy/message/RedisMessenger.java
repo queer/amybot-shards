@@ -92,7 +92,6 @@ public class RedisMessenger implements EventMessenger {
         final RawGuild rawGuild = readJson(rawEvent, RawGuild.class);
         final Guild guild = Guild.fromRaw(rawGuild);
         
-        // TODO: It's probably a better idea to bucket stuff into hashes, but that spreads data around more :I
         // This seems Fast Enough:tm: for now; prod. shard boots about 3 seconds after finishing the login,
         // which is probably good enough for this.
         //noinspection CodeBlock2Expr
@@ -141,9 +140,9 @@ public class RedisMessenger implements EventMessenger {
         // available. The problem is that when we stream guilds from Discord, there is a possibility that we recv. events
         // during that streaming period.
         final String type = rawEvent.getData().getString("t");
-    
+        
         switch(type) {
-            case "READY":
+            case "READY": {
                 // Discord READY event. Cache unavailable guilds, then start streaming
                 // TODO: Move to Jackson?
                 final JSONArray guilds = rawEvent.getData().getJSONObject("d").getJSONArray("guilds");
@@ -151,10 +150,12 @@ public class RedisMessenger implements EventMessenger {
                         .map(JSONObject.class::cast).map(o -> o.getString("id")).collect(Collectors.toList());
                 start = System.currentTimeMillis();
                 return;
-            case "GUILD_CREATE":
+            }
+            case "GUILD_CREATE": {
                 cacheGuild(rawEvent);
                 return;
-            case "GUILD_DELETE":
+            }
+            case "GUILD_DELETE": {
                 // Convert to a GUILD_CREATE for unavailability
                 if(isStreamingGuilds && rawEvent.getData().getJSONObject("d").has("unavailable")
                         && rawEvent.getData().getJSONObject("d").getBoolean("unavailable")) {
@@ -172,9 +173,29 @@ public class RedisMessenger implements EventMessenger {
                     });
                 }
                 return;
-            case "GUILD_MEMBERS_CHUNK":
-                // TODO: Cache these
-                break;
+            }
+            case "GUILD_MEMBERS_CHUNK": {
+                // This event is basically just
+                // {
+                //   "guild_id": "12345678901234567",
+                //   "members": [
+                //     ...
+                //   ]
+                // }
+                //
+                // So we deserialize the members array, and add them to
+                // - The guild in question
+                // - The global set of users, as needed
+                //
+                // Some thoughts so that I don't forget:
+                // - This is a RawMember[]; we should just run it through getUser() and Member#fromRaw and cache those
+                // - Should probably make User implement CachedObject<Void>
+                //
+                // As this is pretty important, I am NOT implementing this while I'm this tired
+                // Get some sleep, THEN implement, ye?
+                
+                return;
+            }
         }
         if(isStreamingGuilds) {
             preloadEventCache.add(rawEvent);
