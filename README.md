@@ -24,6 +24,8 @@ This simple graph should explain it all quite nicely
 
 ![Graph](simple.svg)
 
+The key takeaway here is that Graphviz is hard to do right. :thumbsup:
+
 ## wtf is wrong with you
 
 Well JDA didn't support what I wanted, and external caching + raw mWS event access is nice. 
