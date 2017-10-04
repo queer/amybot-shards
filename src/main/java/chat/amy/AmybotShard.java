@@ -63,6 +63,7 @@ public final class AmybotShard {
         jedisPoolConfig.setMaxWaitMillis(500);
         redis = new JedisPool(jedisPoolConfig, Optional.ofNullable(System.getenv("REDIS_HOST")).orElse("redis"));
         eventBus.register(this);
+        wsEventManager.setup();
         eventBus.register(wsEventManager);
         eventBus.post(InternalEvent.GET_SHARD_ID);
     }

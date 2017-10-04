@@ -13,9 +13,7 @@ import java.io.IOException;
  * @author amy
  * @since 10/2/17.
  */
-public interface CachedObject<T> {
-    ObjectMapper mapper = new ObjectMapper();
-    
+public interface CachedObject<T> extends JsonCached {
     static <E> E cacheRead(final CacheReadContext<String, Class<E>> context) {
         try {
             return mapper.readValue(context.getData(), context.getOtherData());
@@ -39,20 +37,4 @@ public interface CachedObject<T> {
      *                pool connections.
      */
     void uncache(CacheContext<T> context);
-    
-    default <E> E readJson(final String json, final Class<E> c) {
-        try {
-            return mapper.readValue(json, c);
-        } catch(final IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-    
-    default <E> String toJson(final E o) {
-        try {
-            return mapper.writeValueAsString(o);
-        } catch(final Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 }

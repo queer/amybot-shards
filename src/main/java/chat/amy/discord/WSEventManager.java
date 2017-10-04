@@ -1,31 +1,22 @@
 package chat.amy.discord;
 
 import chat.amy.AmybotShard;
-import chat.amy.cache.CachedObject;
-import chat.amy.cache.context.CacheContext;
-import chat.amy.cache.context.CacheReadContext;
-import chat.amy.cache.guild.Guild;
-import chat.amy.cache.guild.Member;
-import chat.amy.cache.raw.RawGuild;
-import chat.amy.cache.raw.RawMember;
-import com.fasterxml.jackson.databind.JsonNode;
+import chat.amy.discord.handle.GuildCreateHandler;
+import chat.amy.discord.handle.GuildDeleteHandler;
+import chat.amy.discord.handle.GuildMembersChunkHandler;
+import chat.amy.discord.handle.ReadyHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.eventbus.Subscribe;
-import org.json.JSONArray;
+import lombok.Getter;
+import lombok.Setter;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * The irony, of course, is that we just end up duplicating a lot of the
@@ -35,19 +26,49 @@ import java.util.stream.StreamSupport;
  * @since 10/3/17.
  */
 public class WSEventManager {
+    @Getter
     private final AmybotShard shard;
-    private final Collection<RawEvent> preloadEventCache = new ArrayList<>();
+    @Getter
+    private final Queue<RawEvent> preloadEventCache = new ConcurrentLinkedQueue<>();
     private final ObjectMapper mapper = new ObjectMapper();
-    private final Logger logger = LoggerFactory.getLogger("Messenger");
+    @Getter
     private final ExecutorService pool = Executors.newCachedThreadPool();
-    private List<String> streamableGuilds;
+    @Getter
+    private final Map<String, WSEventHandler<?>> handlers = new HashMap<>();
+    @Getter
+    private final Map<String, WSEventHandler<JedisPool>> cacheHandlers = new HashMap<>();
+    @Getter
+    private List<String> streamableGuilds = new ArrayList<>();
+    @Getter
+    @Setter
     private int streamedGuildCount;
+    @Getter
+    @Setter
     private boolean isStreamingGuilds = true;
+    @Getter
+    @Setter
     private long start;
-    private long end;
+    @Getter
+    @Setter
+    private boolean ready;
+    private boolean setup;
     
     public WSEventManager(final AmybotShard shard) {
         this.shard = shard;
+    }
+    
+    public void incrementStreamedGuilds() {
+        streamedGuildCount += 1;
+    }
+    
+    public void setup() {
+        if(!setup) {
+            setup = true;
+            handlers.put("READY", new ReadyHandler());
+            cacheHandlers.put("GUILD_CREATE", new GuildCreateHandler());
+            cacheHandlers.put("GUILD_DELETE", new GuildDeleteHandler());
+            cacheHandlers.put("GUILD_MEMBERS_CHUNK", new GuildMembersChunkHandler());
+        }
     }
     
     @Subscribe
@@ -66,136 +87,46 @@ public class WSEventManager {
         // of the shard process because we need to be sure that events that are cached here actually have all the data
         // available. The problem is that when we stream guilds from Discord, there is a possibility that we recv. events
         // during that streaming period.
-        final String type = rawEvent.getData().getString("t");
-        
+        String type = rawEvent.getData().getString("t");
         final JSONObject data = rawEvent.getData().getJSONObject("d");
+        
+        // If a guild is "unavailable" while streaming guilds, and it's a GUILD_DELETE, convert it to a GUILD_CREATE event
+        // When this happens, it's probably because a guild went unavailable or smth during a Discord outage
+        if(isStreamingGuilds && data.has("unavailable")
+                && data.getBoolean("unavailable")) {
+            type = "GUILD_CREATE";
+        }
+        
         switch(type) {
             case "READY": {
-                // Discord READY event. Cache unavailable guilds, then start streaming
-                // TODO: Move to Jackson?
-                final JSONArray guilds = data.getJSONArray("guilds");
-                streamableGuilds = StreamSupport.stream(guilds.spliterator(), false)
-                        .map(JSONObject.class::cast).map(o -> o.getString("id")).collect(Collectors.toList());
-                start = System.currentTimeMillis();
+                handlers.get(type).handle(new WSEventContext<>(this, rawEvent));
                 return;
             }
+            case "GUILD_MEMBERS_CHUNK":
+            case "GUILD_DELETE":
             case "GUILD_CREATE": {
-                cacheGuild(rawEvent);
-                return;
-            }
-            case "GUILD_DELETE": {
-                // Convert to a GUILD_CREATE for unavailability
-                if(isStreamingGuilds && data.has("unavailable")
-                        && data.getBoolean("unavailable")) {
-                    cacheGuild(rawEvent);
-                } else {
-                    // Otherwise delet
-                    //noinspection CodeBlock2Expr
-                    cache(jedis -> {
-                        pool.execute(() -> {
-                            final RawGuild rawGuild = readJson(rawEvent, RawGuild.class);
-                            final Guild guild = fromJson(jedis.get("guild:" + rawGuild.getId() + ":bucket"), Guild.class);
-                            rawGuild.uncache(new CacheContext<>(shard.getRedis()));
-                            guild.uncache(new CacheContext<>(shard.getRedis()));
-                        });
-                    });
+                cacheHandlers.get(type).handle(new CachedEventContext(this, rawEvent, shard.getRedis()));
+                // Don't queue these events for the backend if we're not ready
+                if(isStreamingGuilds) {
+                    return;
                 }
-                return;
+                break;
             }
-            case "GUILD_MEMBERS_CHUNK": {
-                // This event is basically just
-                // {
-                //   "guild_id": "12345678901234567",
-                //   "members": [
-                //     ...
-                //   ]
-                // }
-                //
-                // So we deserialize the members array, and add them to
-                // - The guild in question
-                // - The global set of users, as needed
-                // Then re-cache the guild to make sure it's up-to-date
-                final String guildId = data.getString("guild_id");
-                final Guild guild = CachedObject.cacheRead(new CacheReadContext<>(shard.getRedis(), "guild:" + guildId + ":bucket", Guild.class));
-                final CacheContext<String> context = new CacheContext<>(shard.getRedis(), guildId);
-                StreamSupport.stream(data.getJSONArray("members").spliterator(), false).map(JSONObject.class::cast)
-                        .forEach(e -> {
-                            final RawMember rawMember = fromJson(e.toString(), RawMember.class);
-                            guild.getMembers().add(Member.fromRaw(rawMember));
-                            rawMember.cache(context);
-                        });
-                guild.cache(new CacheContext<>(shard.getRedis(), null));
-                return;
-            }
+            default:
+                break;
         }
+        
+        // If we're streaming guilds, cache the event as needed
         if(isStreamingGuilds) {
             preloadEventCache.add(rawEvent);
-            return;
+        } else {
+            shard.getMessenger().queue(rawEvent);
         }
     }
     
     private <T> T fromJson(final String json, final Class<T> c) {
         try {
             return mapper.readValue(json, c);
-        } catch(final IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-    
-    @SuppressWarnings("ConstantConditions")
-    private void cacheGuild(final RawEvent rawEvent) {
-        final RawGuild rawGuild = readJson(rawEvent, RawGuild.class);
-        final Guild guild = Guild.fromRaw(rawGuild);
-        
-        // This seems Fast Enough:tm: for now; prod. shard boots about 3 seconds after finishing the login,
-        // which is probably good enough for this.
-        //noinspection CodeBlock2Expr
-        pool.execute(() -> {
-            // Bucket the guild itself
-            guild.cache(new CacheContext<>(shard.getRedis()));
-            // Bucket channels, members, roles, ...
-            rawGuild.cache(new CacheContext<>(shard.getRedis()));
-        });
-        
-        // If we're streaming guilds, we need to make sure we mark "finished" when we're done
-        if(isStreamingGuilds) {
-            if(streamableGuilds.contains(rawGuild.getId())) {
-                ++streamedGuildCount;
-                if(streamedGuildCount == streamableGuilds.size()) {
-                    isStreamingGuilds = false;
-                    end = System.currentTimeMillis();
-                    cache(jedis -> {
-                        logger.info("Started up in " + (end - start) + "ms");
-                        logger.info("Our caches vs JDA:");
-                        logger.info("Guilds:  {} vs {}", jedis.scard("guild:sset"), shard.getJda().getGuildCache().size());
-                        logger.info("Users:   {} vs {}", jedis.scard("user:sset"), shard.getJda().getUserCache().size());
-                    });
-                    preloadEventCache.forEach(shard.getMessenger()::queue);
-                }
-            }
-        }
-    }
-    
-    private void cache(final Consumer<Jedis> op) {
-        try(Jedis jedis = shard.getRedis().getResource()) {
-            jedis.auth(System.getenv("REDIS_PASS"));
-            op.accept(jedis);
-        }
-    }
-    
-    /**
-     * Get the <code>d</code> field of the event and parse that into an object.
-     *
-     * @param event Event to parse
-     * @param c     Class to parse to
-     * @param <T>   Type to parse to
-     *
-     * @return Parsed object
-     */
-    private <T> T readJson(final RawEvent event, final Class<T> c) {
-        try {
-            final JsonNode tree = mapper.readTree(event.getRaw());
-            return mapper.treeToValue(tree.get("d"), c);
         } catch(final IOException e) {
             throw new RuntimeException(e);
         }
