@@ -1,5 +1,6 @@
 package chat.amy;
 
+import chat.amy.discord.WSEventManager;
 import chat.amy.message.EventMessenger;
 import chat.amy.message.RedisMessenger;
 import chat.amy.shard.EnvSharder;
@@ -17,6 +18,8 @@ import net.dv8tion.jda.core.exceptions.RateLimitedException;
 import net.dv8tion.jda.core.hooks.EventListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 import javax.security.auth.login.LoginException;
 import java.util.Optional;
@@ -32,8 +35,14 @@ public final class AmybotShard {
     @SuppressWarnings("TypeMayBeWeakened")
     @Getter
     private final Logger logger = LoggerFactory.getLogger("amybot-shard");
+    
     // TODO: Make this configurable or smth
+    @Getter
     private final EventMessenger messenger = new RedisMessenger(this);
+    @Getter
+    private final WSEventManager wsEventManager = new WSEventManager(this);
+    @Getter
+    private JedisPool redis;
     @Getter
     private JDA jda;
     private int shardId;
@@ -48,15 +57,13 @@ public final class AmybotShard {
     }
     
     private void start() {
-        /*
-         * Order of things is something like:
-         * - Start container
-         * - Derive shard ID from metadata
-         * - Set up send / recv. queues
-         * - Actually boot shard
-         */
+        final JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
+        jedisPoolConfig.setMaxIdle(1024);
+        jedisPoolConfig.setMaxTotal(1024);
+        jedisPoolConfig.setMaxWaitMillis(500);
+        redis = new JedisPool(jedisPoolConfig, Optional.ofNullable(System.getenv("REDIS_HOST")).orElse("redis"));
         eventBus.register(this);
-        eventBus.register(messenger);
+        eventBus.register(wsEventManager);
         eventBus.post(InternalEvent.GET_SHARD_ID);
     }
     
