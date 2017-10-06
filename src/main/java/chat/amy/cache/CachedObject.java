@@ -13,6 +13,7 @@ import java.io.IOException;
  * @author amy
  * @since 10/2/17.
  */
+@Deprecated
 public interface CachedObject<T> extends JsonCached {
     static <E> E cacheRead(final CacheReadContext<String, Class<E>> context) {
         try {
