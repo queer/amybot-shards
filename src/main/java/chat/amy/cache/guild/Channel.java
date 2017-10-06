@@ -1,5 +1,6 @@
 package chat.amy.cache.guild;
 
+import chat.amy.cache.Snowflake;
 import chat.amy.cache.context.CacheContext;
 import chat.amy.cache.CachedObject;
 import chat.amy.cache.user.User;
@@ -21,7 +22,7 @@ import java.util.List;
 @EqualsAndHashCode
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Channel implements CachedObject<Void> {
+public class Channel implements CachedObject<Void>, Snowflake {
     private String id;
     private ChannelType type;
     @JsonProperty("guild_id")

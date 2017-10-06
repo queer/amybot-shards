@@ -1,5 +1,6 @@
 package chat.amy.cache.guild;
 
+import chat.amy.cache.Snowflake;
 import chat.amy.cache.context.CacheContext;
 import chat.amy.cache.CachedObject;
 import chat.amy.cache.raw.RawGuild;
@@ -14,7 +15,7 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode
 @AllArgsConstructor
-public class Role implements CachedObject<RawGuild> {
+public class Role implements CachedObject<RawGuild>, Snowflake {
     private final String id;
     private String name;
     private int color;

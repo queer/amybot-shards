@@ -1,5 +1,6 @@
 package chat.amy.cache.guild;
 
+import chat.amy.cache.Snowflake;
 import chat.amy.cache.raw.RawMember;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
@@ -15,8 +16,8 @@ import java.util.List;
 @Data
 @EqualsAndHashCode
 @AllArgsConstructor
-public class Member {
-    private String userId;
+public class Member implements Snowflake {
+    private String id;
     private String nickname;
     private List<String> roles;
     @JsonProperty("joined_at")
@@ -29,7 +30,7 @@ public class Member {
     
     public static Member fromRaw(final RawMember r) {
         final Member m = new Member();
-        m.userId = r.getUser().getId();
+        m.id = r.getUser().getId();
         m.nickname = r.getNick();
         m.roles = r.getRoles();
         m.joinedAt = r.getJoinedAt();

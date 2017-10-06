@@ -1,5 +1,6 @@
 package chat.amy.cache.guild;
 
+import chat.amy.cache.Snowflake;
 import chat.amy.cache.context.CacheContext;
 import chat.amy.cache.CachedObject;
 import chat.amy.cache.raw.RawGuild;
@@ -17,7 +18,7 @@ import java.util.List;
 @Data
 @EqualsAndHashCode
 @AllArgsConstructor
-public class Emote implements CachedObject<RawGuild> {
+public class Emote implements CachedObject<RawGuild>, Snowflake {
     private String id;
     private String name;
     private List<Role> roles;

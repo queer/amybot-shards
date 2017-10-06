@@ -1,5 +1,8 @@
 package chat.amy;
 
+import chat.amy.cache.context.CacheContext;
+import chat.amy.cache.controller.CacheController;
+import chat.amy.cache.controller.CacheControllerImpl;
 import chat.amy.discord.WSEventManager;
 import chat.amy.message.EventMessenger;
 import chat.amy.message.RedisMessenger;
@@ -35,6 +38,9 @@ public final class AmybotShard {
     @SuppressWarnings("TypeMayBeWeakened")
     @Getter
     private final Logger logger = LoggerFactory.getLogger("amybot-shard");
+    
+    @Getter
+    private final CacheController cacheController = new CacheControllerImpl(this);
     
     // TODO: Make this configurable or smth
     @Getter

@@ -1,6 +1,7 @@
 package chat.amy.cache.user;
 
 import chat.amy.cache.CachedObject;
+import chat.amy.cache.Snowflake;
 import chat.amy.cache.context.CacheContext;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -14,7 +15,7 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class User implements CachedObject<Void> {
+public class User implements CachedObject<Void>, Snowflake {
     private String id;
     private String username;
     private String discriminator;

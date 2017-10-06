@@ -1,5 +1,6 @@
 package chat.amy.cache.raw;
 
+import chat.amy.cache.Snowflake;
 import chat.amy.cache.context.CacheContext;
 import chat.amy.cache.CachedObject;
 import chat.amy.cache.guild.Channel;
@@ -20,7 +21,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public final class RawGuild implements CachedObject<Void> {
+public final class RawGuild implements CachedObject<Void>, Snowflake {
     private String id;
     private String name;
     private String icon;

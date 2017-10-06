@@ -1,5 +1,6 @@
 package chat.amy.cache.guild;
 
+import chat.amy.cache.Snowflake;
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -12,7 +13,7 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode
 @AllArgsConstructor
-public class PermissionOverwrite {
+public class PermissionOverwrite implements Snowflake {
     private String id;
     private OverwriteType type;
     private int allow;

@@ -1,5 +1,6 @@
 package chat.amy.cache.guild;
 
+import chat.amy.cache.Snowflake;
 import chat.amy.cache.context.CacheContext;
 import chat.amy.cache.CachedObject;
 import chat.amy.cache.context.CacheReadContext;
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
  */
 @Data
 @EqualsAndHashCode
-public final class Guild implements CachedObject<Void> {
+public final class Guild implements CachedObject<Void>, Snowflake {
     /**
      * Only sent during GUILD_CREATE
      */
@@ -143,13 +144,13 @@ public final class Guild implements CachedObject<Void> {
             // Find if any of our users are still needed, and delete the ones that aren't
             final Set<String> oldGuilds = jedis.smembers("guild:sset");
             // Get list of nuked guild's users
-            final List<String> memberIds = members.stream().map(Member::getUserId).collect(Collectors.toList());
+            final List<String> memberIds = members.stream().map(Member::getId).collect(Collectors.toList());
             // Check against members in every other guild
             oldGuilds.forEach(e -> {
                 final Guild other = CachedObject.cacheRead(CacheReadContext.fromContext(context, "guild:" + e + ":bucket", Guild.class));
                 //final Guild other = readJson(jedis.get("guild:" + e + ":bucket"), Guild.class);
                 // Remove old members
-                other.getMembers().forEach(m -> memberIds.remove(m.getUserId()));
+                other.getMembers().forEach(m -> memberIds.remove(m.getId()));
             });
             // For those who survive, delete them
             memberIds.forEach(e -> {

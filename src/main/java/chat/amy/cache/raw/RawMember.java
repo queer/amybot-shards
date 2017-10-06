@@ -1,5 +1,6 @@
 package chat.amy.cache.raw;
 
+import chat.amy.cache.Snowflake;
 import chat.amy.cache.context.CacheContext;
 import chat.amy.cache.CachedObject;
 import chat.amy.cache.guild.Member;
@@ -18,7 +19,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class RawMember implements CachedObject<String> {
+public class RawMember implements CachedObject<String>, Snowflake {
     private User user;
     private String nick;
     private List<String> roles;
@@ -51,5 +52,10 @@ public class RawMember implements CachedObject<String> {
                 jedis.srem("user:sset", user.getId());
             }*/
         });
+    }
+    
+    @Override
+    public String getId() {
+        return user.getId();
     }
 }
