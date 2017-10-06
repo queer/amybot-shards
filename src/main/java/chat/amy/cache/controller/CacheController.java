@@ -28,5 +28,9 @@ public interface CacheController {
      *
      * @return
      */
-    <E extends Snowflake> CacheMapper getMapper(E object);
+    default <E extends Snowflake> CacheMapper getMapper(E object) {
+        return getMapper(object.getClass());
+    }
+    
+    <E extends Snowflake> CacheMapper getMapper(Class<E> object);
 }
