@@ -18,6 +18,7 @@ import java.util.Map;
  * @author amy
  * @since 10/5/17.
  */
+// Somehow creating this class takes ~120ms. idk either. /shrug
 public class MemoryMapper implements CacheMapper, JsonCached {
     /**
      * Map classes -> {snowflakes -> json data}
@@ -26,6 +27,9 @@ public class MemoryMapper implements CacheMapper, JsonCached {
     
     @Override
     public <E extends Snowflake> void map(final E object) {
+        if(!System.getenv().containsKey("TEST")) {
+            System.err.println("WARNING: RUNNING MEMORYMAPPER IN NON-TEST ENV.");
+        }
         if(!cacheMap.containsKey(object.getClass())) {
             cacheMap.put(object.getClass(), new HashMap<>());
         }
@@ -40,6 +44,9 @@ public class MemoryMapper implements CacheMapper, JsonCached {
     
     @Override
     public <E extends Snowflake> E unmap(final String snowflake, final Class<E> clz) {
+        if(!System.getenv().containsKey("TEST")) {
+            System.err.println("WARNING: RUNNING MEMORYMAPPER IN NON-TEST ENV.");
+        }
         if(!cacheMap.containsKey(clz)) {
             return null;
         }

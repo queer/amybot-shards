@@ -8,6 +8,7 @@ import chat.amy.cache.presence.PresenceUpdate;
 import chat.amy.cache.raw.RawGuild;
 import chat.amy.cache.voice.VoiceState;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
  */
 @Data
 @EqualsAndHashCode
+@AllArgsConstructor
 public final class Guild implements CachedObject<Void>, Snowflake {
     /**
      * Only sent during GUILD_CREATE
