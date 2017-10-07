@@ -25,13 +25,9 @@ public class CacheControllerTest {
                 Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), 0, "",
                 false, "", "", false, false, 0,
                 Collections.emptyList());
-        System.out.println("Guild create: " + (System.currentTimeMillis() - start) + "ms");
         guildMapper.map(guild);
-        System.out.println("Mapped in: " + (System.currentTimeMillis() - start) + "ms");
         Guild mapped = guildMapper.unmap("12345", Guild.class);
-        System.out.println("Mapped out: " + (System.currentTimeMillis() - start) + "ms");
         assertEquals(guild, mapped);
-        System.out.println("Full guild cache: " + (System.currentTimeMillis() - start) + "ms");
     }
     
     @Test
