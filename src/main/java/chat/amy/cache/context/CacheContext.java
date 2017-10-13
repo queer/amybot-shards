@@ -29,6 +29,7 @@ public class CacheContext<T> {
     
     public void cache(final Consumer<Jedis> function) {
         try(final Jedis jedis = pool.getResource()) {
+            jedis.auth(System.getenv("REDIS_PASS"));
             function.accept(jedis);
         }
     }

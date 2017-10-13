@@ -29,6 +29,7 @@ public class RedisMapper implements CacheMapper, JsonCached {
     @Override
     public <E extends Snowflake> void map(final E object) {
         try(final Jedis jedis = shard.getRedis().getResource()) {
+            jedis.auth(System.getenv("REDIS_PASS"));
             jedis.set(object.getClass().getSimpleName().toLowerCase() + ':' + object.getId() + ":bucket", toJson(object));
         }
     }
@@ -41,6 +42,7 @@ public class RedisMapper implements CacheMapper, JsonCached {
         // See the "Pipelining" section here: https://github.com/xetorthio/jedis/wiki/AdvancedUsage
         
         try(final Jedis jedis = shard.getRedis().getResource()) {
+            jedis.auth(System.getenv("REDIS_PASS"));
             try(final Pipeline pipeline = jedis.pipelined()) {
                 objects.forEach(object -> pipeline.set(object.getClass().getSimpleName().toLowerCase() + ':' + object.getId() + ":bucket", toJson(object)));
                 // TODO: I *think* this is all I need to do? :Thonk:
@@ -55,6 +57,7 @@ public class RedisMapper implements CacheMapper, JsonCached {
     @Override
     public <E extends Snowflake> E unmap(final String snowflake, final Class<E> clz) {
         try(final Jedis jedis = shard.getRedis().getResource()) {
+            jedis.auth(System.getenv("REDIS_PASS"));
             return readJson(jedis.get(clz.getSimpleName().toLowerCase() + ':' + snowflake + ":bucket"), clz);
         }
     }

@@ -17,6 +17,7 @@ public class CachedEventContext extends WSEventContext<JedisPool> {
     public void cache(Consumer<Jedis> function) {
         getWsEventManager().getPool().execute(() -> {
             try(final Jedis jedis = getData().getResource()) {
+                jedis.auth(System.getenv("REDIS_PASS"));
                 function.accept(jedis);
             }
         });
