@@ -73,8 +73,6 @@ public class WSEventManager {
     
     @Subscribe
     public void handle(final RawEvent rawEvent) {
-        // TODO: This logic should probably exist somewhere else...
-        
         // So this is actually a bit interesting. We need to not ship off events until we finish streaming all the guilds,
         // because otherwise the backend might not have caches available etc.
         // This is solved by
@@ -112,6 +110,22 @@ public class WSEventManager {
                 }
                 break;
             }
+            case "CHANNEL_CREATE":
+            case "CHANNEL_UPDATE":
+            case "CHANNEL_DELETE":
+            case "GUILD_UPDATE":
+            case "GUILD_EMOJIS_UPDATE":
+            case "GUILD_MEMBER_ADD":
+            case "GUILD_MEMBER_REMOVE":
+            case "GUILD_MEMBER_UPDATE":
+            case "GUILD_ROLE_CREATE":
+            case "GUILD_ROLE_UPDATE":
+            case "GUILD_ROLE_DELETE":
+            case "MESSAGE_CREATE":
+            // TODO: Give a fuck about reactions?
+            case "PRESENCE_UPDATE":
+            case "USER_UPDATE":
+            // TODO: Give a fuck about voice state updates?
             default:
                 break;
         }
