@@ -1,18 +1,30 @@
 package chat.amy.discord;
 
 import chat.amy.AmybotShard;
-import chat.amy.discord.handle.GuildCreateHandler;
-import chat.amy.discord.handle.GuildDeleteHandler;
-import chat.amy.discord.handle.GuildMembersChunkHandler;
+import chat.amy.discord.handle.MessageCreateHandler;
 import chat.amy.discord.handle.ReadyHandler;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import chat.amy.discord.handle.guild.GuildCreateHandler;
+import chat.amy.discord.handle.guild.GuildDeleteHandler;
+import chat.amy.discord.handle.guild.GuildMembersChunkHandler;
+import chat.amy.discord.handle.guild.GuildUpdateHandler;
+import chat.amy.discord.handle.guild.channel.ChannelCreateHandler;
+import chat.amy.discord.handle.guild.channel.ChannelDeleteHandler;
+import chat.amy.discord.handle.guild.channel.ChannelUpdateHandler;
+import chat.amy.discord.handle.guild.emote.GuildEmoteUpdateHandler;
+import chat.amy.discord.handle.guild.member.GuildMemberAddHandler;
+import chat.amy.discord.handle.guild.member.GuildMemberRemoveHandler;
+import chat.amy.discord.handle.guild.member.GuildMemberUpdateHandler;
+import chat.amy.discord.handle.guild.role.GuildRoleCreateHandler;
+import chat.amy.discord.handle.guild.role.GuildRoleDeleteHandler;
+import chat.amy.discord.handle.guild.role.GuildRoleUpdateHandler;
+import chat.amy.discord.handle.user.PresenceUpdateHandler;
+import chat.amy.discord.handle.user.UserUpdateHandler;
 import com.google.common.eventbus.Subscribe;
 import lombok.Getter;
 import lombok.Setter;
 import org.json.JSONObject;
 import redis.clients.jedis.JedisPool;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -25,12 +37,13 @@ import java.util.concurrent.Executors;
  * @author amy
  * @since 10/3/17.
  */
+@SuppressWarnings("OverlyCoupledClass")
 public class WSEventManager {
     @Getter
     private final AmybotShard shard;
     @Getter
+    @SuppressWarnings("TypeMayBeWeakened")
     private final Queue<RawEvent> preloadEventCache = new ConcurrentLinkedQueue<>();
-    private final ObjectMapper mapper = new ObjectMapper();
     @Getter
     private final ExecutorService pool = Executors.newCachedThreadPool();
     @Getter
@@ -38,7 +51,7 @@ public class WSEventManager {
     @Getter
     private final Map<String, WSEventHandler<JedisPool>> cacheHandlers = new HashMap<>();
     @Getter
-    private List<String> streamableGuilds = new ArrayList<>();
+    private final List<String> streamableGuilds = new ArrayList<>();
     @Getter
     @Setter
     private int streamedGuildCount;
@@ -68,6 +81,20 @@ public class WSEventManager {
             cacheHandlers.put("GUILD_CREATE", new GuildCreateHandler());
             cacheHandlers.put("GUILD_DELETE", new GuildDeleteHandler());
             cacheHandlers.put("GUILD_MEMBERS_CHUNK", new GuildMembersChunkHandler());
+            cacheHandlers.put("CHANNEL_CREATE", new ChannelCreateHandler());
+            cacheHandlers.put("CHANNEL_UPDATE", new ChannelUpdateHandler());
+            cacheHandlers.put("CHANNEL_DELETE", new ChannelDeleteHandler());
+            cacheHandlers.put("GUILD_UPDATE", new GuildUpdateHandler());
+            cacheHandlers.put("GUILD_EMOJIS_UPDATE", new GuildEmoteUpdateHandler());
+            cacheHandlers.put("GUILD_MEMBER_ADD", new GuildMemberAddHandler());
+            cacheHandlers.put("GUILD_MEMBER_REMOVE", new GuildMemberRemoveHandler());
+            cacheHandlers.put("GUILD_MEMBER_UPDATE", new GuildMemberUpdateHandler());
+            cacheHandlers.put("GUILD_ROLE_CREATE", new GuildRoleCreateHandler());
+            cacheHandlers.put("GUILD_ROLE_UPDATE", new GuildRoleUpdateHandler());
+            cacheHandlers.put("GUILD_ROLE_DELETE", new GuildRoleDeleteHandler());
+            cacheHandlers.put("MESSAGE_CREATE", new MessageCreateHandler());
+            cacheHandlers.put("PRESENCE_UPDATE", new PresenceUpdateHandler());
+            cacheHandlers.put("USER_UPDATE", new UserUpdateHandler());
         }
     }
     
@@ -122,10 +149,12 @@ public class WSEventManager {
             case "GUILD_ROLE_UPDATE":
             case "GUILD_ROLE_DELETE":
             case "MESSAGE_CREATE":
-            // TODO: Give a fuck about reactions?
+                // TODO: Give a fuck about reactions?
             case "PRESENCE_UPDATE":
             case "USER_UPDATE":
-            // TODO: Give a fuck about voice state updates?
+                // TODO: Give a fuck about voice state updates?
+                cacheHandlers.get(type).handle(new CachedEventContext(this, rawEvent, shard.getRedis()));
+                break;
             default:
                 break;
         }
@@ -135,14 +164,6 @@ public class WSEventManager {
             preloadEventCache.add(rawEvent);
         } else {
             shard.getMessenger().queue(rawEvent);
-        }
-    }
-    
-    private <T> T fromJson(final String json, final Class<T> c) {
-        try {
-            return mapper.readValue(json, c);
-        } catch(final IOException e) {
-            throw new RuntimeException(e);
         }
     }
 }

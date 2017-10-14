@@ -1,4 +1,4 @@
-package chat.amy.discord.handle;
+package chat.amy.discord.handle.guild;
 
 import chat.amy.cache.JsonCached;
 import chat.amy.cache.context.CacheContext;
