@@ -18,6 +18,13 @@ Due to some needs of mine, this is also a Discord API library, of sorts. Eventua
 [![forthebadge](http://forthebadge.com/images/badges/powered-by-electricity.svg)](http://forthebadge.com)
 
 
+## Current TODO list
+
+- Finish mechanisms for building caches out of Discord events
+- Make sure that snowflake ZSET caches are actually updated
+- Make sure that tests actually pass
+- Abstract out the messenger layer a bit better so that I can drop in RMQ support later
+
 ## How is everything connected?
 
 This simple graph should explain it all quite nicely
