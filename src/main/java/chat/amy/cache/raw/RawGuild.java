@@ -1,8 +1,6 @@
 package chat.amy.cache.raw;
 
 import chat.amy.cache.Snowflake;
-import chat.amy.cache.context.CacheContext;
-import chat.amy.cache.CachedObject;
 import chat.amy.cache.guild.Channel;
 import chat.amy.cache.guild.Emote;
 import chat.amy.cache.guild.Role;
@@ -21,7 +19,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public final class RawGuild implements CachedObject<Void>, Snowflake {
+public final class RawGuild implements Snowflake {
     private String id;
     private String name;
     private String icon;
@@ -91,24 +89,4 @@ public final class RawGuild implements CachedObject<Void>, Snowflake {
     private final List<RawPresenceUpdate> presences;
     @JsonProperty("system_channel_id")
     private String systemChannelId;
-    
-    @Override
-    public void cache(final CacheContext<Void> context) {
-        final CacheContext<RawGuild> rawGuildCacheContext = CacheContext.fromContext(context, this);
-        final CacheContext<String> idCacheContext = CacheContext.fromContext(context, id);
-        channels.forEach(channel -> channel.cache(context));
-        members.forEach(member -> member.cache(idCacheContext));
-        roles.forEach(role -> role.cache(rawGuildCacheContext));
-        emojis.forEach(emote -> emote.cache(rawGuildCacheContext));
-    }
-    
-    @Override
-    public void uncache(final CacheContext<Void> context) {
-        final CacheContext<RawGuild> rawGuildCacheContext = CacheContext.fromContext(context, this);
-        final CacheContext<String> idCacheContext = CacheContext.fromContext(context, id);
-        channels.forEach(channel -> channel.uncache(context));
-        members.forEach(member -> member.uncache(idCacheContext));
-        roles.forEach(role -> role.uncache(rawGuildCacheContext));
-        emojis.forEach(emote -> emote.uncache(rawGuildCacheContext));
-    }
 }

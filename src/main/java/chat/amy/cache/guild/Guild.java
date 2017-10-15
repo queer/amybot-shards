@@ -1,9 +1,6 @@
 package chat.amy.cache.guild;
 
 import chat.amy.cache.Snowflake;
-import chat.amy.cache.context.CacheContext;
-import chat.amy.cache.CachedObject;
-import chat.amy.cache.context.CacheReadContext;
 import chat.amy.cache.presence.PresenceUpdate;
 import chat.amy.cache.raw.RawGuild;
 import chat.amy.cache.voice.VoiceState;
@@ -13,7 +10,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
@@ -24,7 +20,7 @@ import java.util.stream.Collectors;
 @Data
 @EqualsAndHashCode
 @AllArgsConstructor
-public final class Guild implements CachedObject<Void>, Snowflake {
+public final class Guild implements Snowflake {
     /**
      * Only sent during GUILD_CREATE
      */
@@ -129,6 +125,7 @@ public final class Guild implements CachedObject<Void>, Snowflake {
         return g;
     }
     
+    /*
     @Override
     public void cache(final CacheContext<Void> context) {
         context.cache(jedis -> {
@@ -161,5 +158,6 @@ public final class Guild implements CachedObject<Void>, Snowflake {
             });
         });
     }
+    */
 }
 

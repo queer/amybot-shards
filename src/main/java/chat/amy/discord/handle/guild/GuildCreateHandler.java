@@ -67,14 +67,16 @@ public class GuildCreateHandler implements CachedEventHandler, JsonCached {
                 if(ctx.getWsEventManager().getStreamedGuildCount() == ctx.getWsEventManager().getStreamableGuilds().size()) {
                     ctx.getWsEventManager().setStreamingGuilds(false);
                     final long end = System.currentTimeMillis();
-                    // TODO: :thinking:
                     ctx.cache(jedis -> {
                         ctx.getLogger().info("Started up in " + (end - ctx.getWsEventManager().getStart()) + "ms");
                         ctx.getLogger().info("Our caches vs JDA:");
                         ctx.getLogger().info("Guilds:  {} vs {}", jedis.scard("guild:sset"), ctx.getShard().getJda().getGuildCache().size());
                         ctx.getLogger().info("Users:   {} vs {}", jedis.scard("user:sset"), ctx.getShard().getJda().getUserCache().size());
                     });
-                    ctx.getWsEventManager().getPreloadEventCache().forEach(ctx.getShard().getMessenger()::queue);
+                    // Don't just directly queue the events, but instead process all of them
+                    ctx.getLogger().info("Processing {} buffered events...", ctx.getWsEventManager().getPreloadEventCache());
+                    ctx.getWsEventManager().getPreloadEventCache().forEach(ctx.getShard().getWsEventManager()::handle);
+                    ctx.getLogger().info("Done!");
                 }
             }
         }

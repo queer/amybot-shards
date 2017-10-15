@@ -1,8 +1,6 @@
 package chat.amy.cache.user;
 
-import chat.amy.cache.CachedObject;
 import chat.amy.cache.Snowflake;
-import chat.amy.cache.context.CacheContext;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
@@ -15,7 +13,7 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class User implements CachedObject<Void>, Snowflake {
+public class User implements Snowflake {
     private String id;
     private String username;
     private String discriminator;
@@ -25,21 +23,4 @@ public class User implements CachedObject<Void>, Snowflake {
     private boolean mfaEnabled;
     private boolean verified;
     private String email;
-    
-    @Override
-    public void cache(final CacheContext<Void> context) {
-        context.cache(jedis -> {
-            // Bucket user
-            if(!jedis.exists("user:" + getId() + ":bucket")) {
-                jedis.set("user:" + getId() + ":bucket", toJson(this));
-                // Bucket user ID
-                jedis.sadd("user:sset", getId());
-            }
-        });
-    }
-    
-    @Override
-    public void uncache(final CacheContext<Void> context) {
-    
-    }
 }

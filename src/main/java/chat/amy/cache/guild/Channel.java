@@ -1,8 +1,6 @@
 package chat.amy.cache.guild;
 
 import chat.amy.cache.Snowflake;
-import chat.amy.cache.context.CacheContext;
-import chat.amy.cache.CachedObject;
 import chat.amy.cache.user.User;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -22,7 +20,7 @@ import java.util.List;
 @EqualsAndHashCode
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Channel implements CachedObject<Void>, Snowflake {
+public class Channel implements Snowflake {
     private String id;
     private ChannelType type;
     @JsonProperty("guild_id")
@@ -55,22 +53,6 @@ public class Channel implements CachedObject<Void>, Snowflake {
     @JsonProperty("last_pin_timestamp")
     private String lastPinTimestamp;
     
-    @Override
-    public void cache(final CacheContext<Void> context) {
-        context.cache(jedis -> {
-            jedis.set("channel:" + getId() + ":bucket", toJson(this));
-            jedis.sadd("channel:sset", getId());
-        });
-    }
-    
-    @Override
-    public void uncache(final CacheContext<Void> context) {
-        context.cache(jedis -> {
-            jedis.del("channel:" + getId() + ":bucket", toJson(this));
-            jedis.srem("channel:sset", getId());
-        });
-    }
-    
     public enum ChannelType {
         GUILD_TEXT(0),
         DM(1),
@@ -80,7 +62,7 @@ public class Channel implements CachedObject<Void>, Snowflake {
         
         @Getter
         private final int type;
-    
+        
         ChannelType(final int type) {
             this.type = type;
         }

@@ -11,6 +11,6 @@ import chat.amy.discord.CachedEventHandler;
 public class GuildEmoteUpdateHandler implements CachedEventHandler, JsonCached {
     @Override
     public void handle(final CachedEventContext ctx) {
-    
+        // TODO
     }
 }
